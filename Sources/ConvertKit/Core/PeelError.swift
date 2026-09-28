@@ -14,6 +14,7 @@ public enum PeelError: Error, Equatable, LocalizedError {
     /// `details` is the tool's full stderr, shown only with --verbose.
     case toolFailed(name: String, exitCode: Int32, lastLine: String, details: String)
     case invalidArgument(String)
+    case cancelled
 
     public var errorDescription: String? {
         switch self {
@@ -39,6 +40,8 @@ public enum PeelError: Error, Equatable, LocalizedError {
             return "\(name) failed (exit \(code))" + (lastLine.isEmpty ? "" : ": \(lastLine)")
         case let .invalidArgument(message):
             return message
+        case .cancelled:
+            return "cancelled"
         }
     }
 }

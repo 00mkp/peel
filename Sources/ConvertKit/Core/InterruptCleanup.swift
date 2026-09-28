@@ -45,7 +45,7 @@ public enum InterruptCleanup {
         let running = Array(processes.values)
         let inFlight = temps
         lock.unlock()
-        running.forEach { $0.terminate() }
+        running.filter(\.isRunning).forEach { $0.terminate() }
         let deadline = Date().addingTimeInterval(3)
         while running.contains(where: \.isRunning) && Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
         for url in inFlight { try? FileManager.default.removeItem(at: url) }

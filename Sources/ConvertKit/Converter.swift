@@ -29,7 +29,7 @@ public struct Converter {
     /// Several images → pdf become one combined PDF; everything else converts file by file.
     /// `output` is a file for a single result, or a folder (created if needed) when there are several inputs.
     public func convert(_ inputs: [URL], to target: FileFormat, options: ConvertOptions = ConvertOptions(),
-                        output: URL? = nil) -> [ConvertOutcome] {
+                        output: URL? = nil, isCancelled: () -> Bool = { false }) -> [ConvertOutcome] {
         if target == .pdf, inputs.count > 1, inputs.allSatisfy({ FileFormat(url: $0)?.category == .image }) {
             return [ConvertOutcome(input: inputs[0], result: Result { try combineImages(inputs, output: output) })]
         }
@@ -37,9 +37,10 @@ public struct Converter {
         // Never write over any input, or over an output this run already produced — even with --force.
         var produced: [URL] = []
         return inputs.map { input in
+            if isCancelled() { return ConvertOutcome(input: input, result: .failure(PeelError.cancelled)) }
             let result = Result {
                 try convertOne(input, to: target, options: options, output: perFileOutput, protecting: inputs + produced)
-            }
+            }.mapError { error -> Error in isCancelled() ? PeelError.cancelled : error }
             produced += (try? result.get()) ?? []
             return ConvertOutcome(input: input, result: result)
         }

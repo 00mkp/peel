@@ -114,8 +114,14 @@ public enum ProcessRunner {
             process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
         }
         InterruptCleanup.track(process)
-        defer { InterruptCleanup.untrack(process) }
+        let token = CancelToken.current
+        token?.register(process)
+        defer {
+            InterruptCleanup.untrack(process)
+            token?.unregister(process)
+        }
         try process.run()
+        if token?.isCancelled == true { process.terminate() }
         process.waitUntilExit()
         try? outHandle.close()
         try? errHandle.close()
