@@ -59,3 +59,24 @@ struct UninstallQuickActions: ParsableCommand {
         if dir == nil { QuickActionPaths.refreshServicesMenu() }
     }
 }
+
+struct QuickActionCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "quick-action",
+        abstract: "Run a Finder Quick Action (called by the installed workflows).",
+        shouldDisplay: false)
+
+    @Argument(help: "convert, merge-pdfs, split-pdf, extract-here or zip") var kind: QuickActionKind
+    @Argument(help: "Selected files.") var files: [String] = []
+
+    func run() throws {
+        let environment = ProcessInfo.processInfo.environment
+        let ui: QuickActionUI = environment["PEEL_QUICK_ACTION_LOG"].map {
+            LogUI(log: URL(fileURLWithPath: $0), choice: environment["PEEL_QUICK_ACTION_CHOICE"])
+        } ?? OsascriptUI()
+        let locator = ToolLocator.standard
+        let code = QuickActionHandler(ui: ui, runner: ActionRunner(locator: locator), locator: locator)
+            .handle(kind, files: files.map(Paths.url))
+        if code != 0 { throw ExitCode(code) }
+    }
+}

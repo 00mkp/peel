@@ -8,7 +8,8 @@ public struct Peel: ParsableCommand {
         abstract: "Convert and edit images, PDFs, audio/video, subtitles and archives — all locally.",
         version: "0.1.0",
         subcommands: [Convert.self, PDFCommand.self, MediaCommand.self, ExtractCommand.self, ZipCommand.self,
-                      Formats.self, Doctor.self, InstallQuickActions.self, UninstallQuickActions.self])
+                      Formats.self, Doctor.self, InstallQuickActions.self, UninstallQuickActions.self,
+                      QuickActionCommand.self])
 
     public init() {}
 
