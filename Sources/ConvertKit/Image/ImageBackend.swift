@@ -106,7 +106,8 @@ public enum ImageBackend {
             defer { try? FileManager.default.removeItem(at: png) }
             try ImageEncoder.write(image, to: png, type: .png)
             if format == .webp {
-                try ProcessRunner.runChecked(encoder, ["-quiet", "-q", "\(options.quality ?? 85)", png.path, "-o", temp.path])
+                try ProcessRunner.runChecked(encoder, ["-quiet", "-metadata", "icc", "-q", "\(options.quality ?? 85)",
+                                                       png.path, "-o", temp.path])
             } else {
                 try ProcessRunner.runChecked(encoder, ["-q", "\(options.quality ?? 60)", png.path, temp.path])
             }

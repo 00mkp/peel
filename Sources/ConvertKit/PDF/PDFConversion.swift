@@ -39,7 +39,7 @@ extension PDFBackend {
         let doc = try open(input)
         var written: [URL] = []
         for index in 0..<doc.pageCount {
-            guard let page = doc.page(at: index)?.pageRef else { continue }
+            guard let page = doc.page(at: index) else { continue }
             let image = try render(page, dpi: dpi)
             let url = output(index + 1)
             try AtomicOutput.write(to: url) { temp in
@@ -50,11 +50,10 @@ extension PDFBackend {
         return written
     }
 
-    /// Rasterizes a page on white at `dpi`, applying the page's /Rotate.
-    static func render(_ page: CGPDFPage, dpi: Int) throws -> CGImage {
-        let box = page.getBoxRect(.mediaBox)
-        let rotation = ((Int(page.rotationAngle) % 360) + 360) % 360
-        let (width, height) = rotation % 180 == 0 ? (box.width, box.height) : (box.height, box.width)
+    /// Rasterizes what a viewer shows — the crop box, rotated, with annotations — on white at `dpi`.
+    static func render(_ page: PDFPage, dpi: Int) throws -> CGImage {
+        let box = page.bounds(for: .cropBox)
+        let (width, height) = page.rotation % 180 == 0 ? (box.width, box.height) : (box.height, box.width)
         let scale = CGFloat(dpi) / 72
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(data: nil, width: Int((width * scale).rounded()), height: Int((height * scale).rounded()),
@@ -66,21 +65,7 @@ extension PDFBackend {
         context.fill(CGRect(x: 0, y: 0, width: context.width, height: context.height))
         context.interpolationQuality = .high
         context.scaleBy(x: scale, y: scale)
-        switch rotation {
-        case 90:
-            context.translateBy(x: 0, y: height)
-            context.rotate(by: -.pi / 2)
-        case 180:
-            context.translateBy(x: width, y: height)
-            context.rotate(by: .pi)
-        case 270:
-            context.translateBy(x: width, y: 0)
-            context.rotate(by: .pi / 2)
-        default:
-            break
-        }
-        context.translateBy(x: -box.minX, y: -box.minY)
-        context.drawPDFPage(page)
+        page.draw(with: .cropBox, to: context)
         guard let image = context.makeImage() else {
             throw PeelError.invalidArgument("page is too large to render at \(dpi) dpi")
         }

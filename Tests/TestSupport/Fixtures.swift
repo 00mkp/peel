@@ -101,8 +101,9 @@ extension Fixtures {
     /// `orientation` stores an EXIF orientation tag (e.g. 6 = rotate 90° clockwise to display).
     @discardableResult
     public static func makeImage(at url: URL, width: Int, height: Int, type: UTType,
-                                 alpha: Bool = false, orientation: Int? = nil) throws -> URL {
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+                                 alpha: Bool = false, orientation: Int? = nil,
+                                 colorSpace: CFString = CGColorSpace.sRGB) throws -> URL {
+        guard let space = CGColorSpace(name: colorSpace),
               let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             throw FixtureError.cannotCreate(url)
@@ -134,4 +135,66 @@ extension Fixtures {
         let offset = (y * image.width + x) * 4
         return (data[offset], data[offset + 1], data[offset + 2], data[offset + 3])
     }
+}
+
+extension Fixtures {
+    /// One white 200×100 pt page with a 20×20 black square in its top-left corner.
+    @discardableResult
+    public static func makeMarkedPDF(at url: URL) throws -> URL {
+        var box = CGRect(x: 0, y: 0, width: 200, height: 100)
+        guard let ctx = CGContext(url as CFURL, mediaBox: &box, nil) else { throw FixtureError.cannotCreate(url) }
+        ctx.beginPDFPage(nil)
+        ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 80, width: 20, height: 20))
+        ctx.endPDFPage()
+        ctx.closePDF()
+        return url
+    }
+
+    /// Embedded ICC profile name of an image file, if any.
+    public static func profileName(_ url: URL) -> String? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] else { return nil }
+        return props[kCGImagePropertyProfileName] as? String
+    }
+
+    /// Target page index of every internal link, per page.
+    public static func linkTargets(_ url: URL) -> [[Int]] {
+        guard let doc = PDFDocument(url: url) else { return [] }
+        return (0..<doc.pageCount).map { index in
+            (doc.page(at: index)?.annotations ?? []).filter { $0.type == "Link" }.compactMap { link in
+                let destination = link.destination ?? (link.action as? PDFActionGoTo)?.destination
+                return destination?.page.map { doc.index(for: $0) }
+            }
+        }
+    }
+
+    /// Hand-written 3-page PDF whose page 1 has a link to page 3.
+    /// (PDFKit can't be used to author this: it writes a corrupt page reference for new link destinations.)
+    @discardableResult
+    public static func makeLinkedPDF(at url: URL) throws -> URL {
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [6 0 R] >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>",
+            "<< /Type /Annot /Subtype /Link /Rect [72 72 172 92] /Border [0 0 0] /Dest [5 0 R /XYZ 0 792 null] >>",
+        ]
+        var pdf = "%PDF-1.4\n"
+        var offsets: [Int] = []
+        for (index, body) in objects.enumerated() {
+            offsets.append(pdf.utf8.count)
+            pdf += "\(index + 1) 0 obj\n\(body)\nendobj\n"
+        }
+        let xref = pdf.utf8.count
+        pdf += "xref\n0 \(objects.count + 1)\n0000000000 65535 f \n"
+        for offset in offsets { pdf += String(format: "%010d 00000 n \n", offset) }
+        pdf += "trailer\n<< /Size \(objects.count + 1) /Root 1 0 R >>\nstartxref\n\(xref)\n%%EOF\n"
+        try Data(pdf.utf8).write(to: url)
+        return url
+    }
+
+    public static let qpdf = URL(fileURLWithPath: "/opt/homebrew/bin/qpdf")
+    public static var hasQPDF: Bool { FileManager.default.isExecutableFile(atPath: qpdf.path) }
 }

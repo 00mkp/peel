@@ -72,4 +72,21 @@ import TestSupport
             try converter.convert([try png("a.png")], to: .webp)[0].result.get()
         }
     }
+
+    // Checkpoint 3 C1: with --force, one input's output must never replace another input.
+    @Test func batchNeverOverwritesAnotherInput() throws {
+        let jpg = try Fixtures.makeImage(at: dir.appendingPathComponent("a.jpg"), width: 10, height: 10, type: .jpeg)
+        let before = try Data(contentsOf: jpg)
+        let outcomes = Converter(planner: OutputPlanner(force: true)).convert([try png("a.png"), jpg], to: .jpg)
+        #expect(try Data(contentsOf: jpg) == before)
+        #expect(outcomes.allSatisfy { (try? $0.result.get()) != nil })
+    }
+
+    // Checkpoint 3 I1: a later file must not overwrite an output made earlier in the same run.
+    @Test func batchNeverOverwritesItsOwnEarlierOutput() throws {
+        let gif = try Fixtures.makeImage(at: dir.appendingPathComponent("p.gif"), width: 40, height: 30, type: .gif)
+        let outputs = Converter(planner: OutputPlanner(force: true)).convert([try png("p.png"), gif], to: .jpg)
+            .flatMap { (try? $0.result.get()) ?? [] }
+        #expect(Set(outputs.map(\.path)).count == 2)
+    }
 }

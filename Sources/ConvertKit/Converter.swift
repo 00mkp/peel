@@ -34,10 +34,14 @@ public struct Converter {
             return [ConvertOutcome(input: inputs[0], result: Result { try combineImages(inputs, output: output) })]
         }
         let perFileOutput = inputs.count > 1 ? output.map(Self.asDirectory) : output
+        // Never write over any input, or over an output this run already produced — even with --force.
+        var produced: [URL] = []
         return inputs.map { input in
-            ConvertOutcome(input: input, result: Result {
-                try convertOne(input, to: target, options: options, output: perFileOutput)
-            })
+            let result = Result {
+                try convertOne(input, to: target, options: options, output: perFileOutput, protecting: inputs + produced)
+            }
+            produced += (try? result.get()) ?? []
+            return ConvertOutcome(input: input, result: result)
         }
     }
 
@@ -63,11 +67,12 @@ public struct Converter {
         return [out]
     }
 
-    private func convertOne(_ input: URL, to target: FileFormat, options: ConvertOptions, output: URL?) throws -> [URL] {
+    private func convertOne(_ input: URL, to target: FileFormat, options: ConvertOptions, output: URL?,
+                            protecting: [URL]) throws -> [URL] {
         let (source, conversion) = try check(input, to: target)
         let ext = target.fileExtension
         func single(_ write: (URL) throws -> Void) throws -> [URL] {
-            let out = planner.plan(input: input, ext: ext, output: output)
+            let out = planner.plan(input: input, ext: ext, output: output, protecting: protecting)
             try write(out)
             return [out]
         }
@@ -77,7 +82,7 @@ public struct Converter {
         case (.pdf, .pdf, _):
             let folder = output.map(Self.asDirectory)
             return try PDFBackend.toImages(input, format: target, dpi: options.dpi) { page in
-                planner.plan(input: input, suffix: "-p\(page)", ext: ext, output: folder)
+                planner.plan(input: input, suffix: "-p\(page)", ext: ext, output: folder, protecting: protecting)
             }
         case (.pdf, .txt, _):
             return try single { try PDFBackend.fromText(input, to: $0) }

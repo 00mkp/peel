@@ -47,11 +47,12 @@ public enum MediaBackend {
         case .mkv:
             codec = ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-vf", evenScale, "-c:a", "aac", "-b:a", "192k"]
         case .webm:
-            codec = ["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-vf", evenScale, "-c:a", "libopus", "-b:a", "128k"]
+            codec = ["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-pix_fmt", "yuv420p", "-vf", evenScale,
+                     "-c:a", "libopus", "-b:a", "128k"]
         case .avi:
             codec = ["-c:v", "mpeg4", "-q:v", "4", "-c:a", "libmp3lame", "-q:a", "4"]
         case .wmv:
-            codec = ["-c:v", "wmv2", "-b:v", "2M", "-c:a", "wmav2", "-b:a", "192k"]
+            codec = ["-c:v", "wmv2", "-b:v", "2M", "-vf", evenScale, "-c:a", "wmav2", "-b:a", "192k"]
         case .mp3: codec = ["-vn", "-c:a", "libmp3lame", "-q:a", "2"]
         case .m4a: codec = ["-vn", "-c:a", "aac", "-b:a", "192k"]
         case .wav: codec = ["-vn", "-c:a", "pcm_s16le"]

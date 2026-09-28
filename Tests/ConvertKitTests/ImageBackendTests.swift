@@ -88,4 +88,13 @@ import TestSupport
         #expect(doc.page(at: 0)?.bounds(for: .mediaBox).size == CGSize(width: 400, height: 300))
         #expect(doc.page(at: 1)?.bounds(for: .mediaBox).size == CGSize(width: 300, height: 400))
     }
+
+    // Checkpoint 3 I4: Display P3 (iPhone) colour must survive → WebP.
+    @Test(.enabled(if: Fixtures.has(.cwebp)))
+    func webpKeepsColorProfile() throws {
+        let p3 = try Fixtures.makeImage(at: out("p3.png"), width: 40, height: 30, type: .png, colorSpace: CGColorSpace.displayP3)
+        #expect(Fixtures.profileName(p3)?.contains("P3") == true)
+        try ImageBackend.convert(p3, to: out("p3.webp"), format: .webp)
+        #expect(Fixtures.profileName(out("p3.webp"))?.contains("P3") == true)
+    }
 }

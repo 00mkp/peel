@@ -19,13 +19,47 @@ public enum PDFBackend {
     /// A new document made of 1-based `pages` of `source` (repeats allowed).
     /// `source` must stay alive until the result is written, or copied pages can render blank.
     static func document(from source: PDFDocument, pages: [Int]) -> PDFDocument {
+        assemble([(source, pages)])
+    }
+
+    /// Copies pages into a new document and re-points internal links at the copies.
+    /// Links to pages that weren't copied are removed (they'd otherwise jump to page 1).
+    static func assemble(_ parts: [(document: PDFDocument, pages: [Int])]) -> PDFDocument {
         let result = PDFDocument()
-        for number in pages {
-            if let page = source.page(at: number - 1)?.copy() as? PDFPage {
-                result.insert(page, at: result.pageCount)
+        var firstCopy: [ObjectIdentifier: PDFPage] = [:]
+        // Each copy with its links' target pages, read from the original: PDFKit resolves destinations
+        // lazily, and a copied annotation whose original was never resolved reports no destination.
+        var copies: [(page: PDFPage, targets: [PDFDestination?])] = []
+        for part in parts {
+            for number in part.pages {
+                guard let original = part.document.page(at: number - 1) else { continue }
+                let targets = original.annotations.map { linkTarget($0) }
+                guard let copy = original.copy() as? PDFPage else { continue }
+                if firstCopy[ObjectIdentifier(original)] == nil { firstCopy[ObjectIdentifier(original)] = copy }
+                result.insert(copy, at: result.pageCount)
+                copies.append((copy, targets))
+            }
+        }
+        for (page, targets) in copies {
+            for (index, link) in page.annotations.enumerated() where index < targets.count {
+                guard let destination = targets[index], let target = destination.page else { continue } // web links etc.
+                guard let copy = firstCopy[ObjectIdentifier(target)] else {
+                    page.removeAnnotation(link)
+                    continue
+                }
+                // Clear both first: otherwise PDFKit writes the stale /Dest or /A reference.
+                link.action = nil
+                link.destination = nil
+                link.action = PDFActionGoTo(destination: PDFDestination(page: copy, at: destination.point))
             }
         }
         return result
+    }
+
+    /// The in-document destination of a link annotation, if it has one.
+    private static func linkTarget(_ annotation: PDFAnnotation) -> PDFDestination? {
+        guard annotation.type == "Link" else { return nil }
+        return annotation.destination ?? (annotation.action as? PDFActionGoTo)?.destination
     }
 
     /// "p3" for one page, "p1-3" / "p5-4" for a run.
@@ -37,14 +71,7 @@ public enum PDFBackend {
     public static func merge(_ inputs: [URL], to output: URL) throws {
         guard inputs.count >= 2 else { throw PeelError.invalidArgument("merge needs at least 2 PDFs") }
         let sources = try inputs.map { try Self.open($0) }
-        let result = PDFDocument()
-        for source in sources {
-            for index in 0..<source.pageCount {
-                if let page = source.page(at: index)?.copy() as? PDFPage {
-                    result.insert(page, at: result.pageCount)
-                }
-            }
-        }
+        let result = assemble(sources.map { ($0, Array(0..<$0.pageCount).map { $0 + 1 }) })
         try withExtendedLifetime(sources) { try save(result, to: output) }
     }
 
@@ -88,12 +115,16 @@ public enum PDFBackend {
             throw PeelError.invalidArgument("rotation must be 90, 180, 270 or -90")
         }
         let doc = try open(input)
-        let targets = Set(try pages?.pages(count: doc.pageCount) ?? Array(0..<doc.pageCount).map { $0 + 1 })
-        for index in 0..<doc.pageCount where targets.contains(index + 1) {
-            if let page = doc.page(at: index) {
+        let all = Array(0..<doc.pageCount).map { $0 + 1 }
+        let targets = Set(try pages?.pages(count: doc.pageCount) ?? all)
+        // PDFKit silently ignores rotation on PDFs whose permissions forbid assembly; rotate copies instead.
+        // (Editing in place is preferred when allowed: it keeps bookmarks and metadata.)
+        let result = doc.allowsDocumentAssembly ? doc : assemble([(doc, all)])
+        for index in 0..<result.pageCount where targets.contains(index + 1) {
+            if let page = result.page(at: index) {
                 page.rotation = (page.rotation + normalized) % 360
             }
         }
-        try save(doc, to: output)
+        try withExtendedLifetime(doc) { try save(result, to: output) }
     }
 }

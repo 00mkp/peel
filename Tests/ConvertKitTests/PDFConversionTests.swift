@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import PDFKit
 import Testing
@@ -78,5 +79,44 @@ import TestSupport
         let out = dir.appendingPathComponent("latin1.pdf")
         try PDFBackend.fromText(txt, to: out)
         #expect(Fixtures.pageTexts(out).first?.contains("café") == true)
+    }
+
+    private func dark(_ url: URL, _ x: Int, _ y: Int) -> Bool {
+        guard let p = Fixtures.pixel(url, x: x, y: y) else { return false }
+        return p.r < 60 && p.g < 60 && p.b < 60
+    }
+
+    @Test func rotatedPageContentIsUpright() throws {
+        let rotated = dir.appendingPathComponent("rot.pdf")
+        try PDFBackend.rotate(try Fixtures.makeMarkedPDF(at: dir.appendingPathComponent("m.pdf")), degrees: 90, pages: nil, to: rotated)
+        let image = try PDFBackend.toImages(rotated, format: .png, dpi: 72) { dir.appendingPathComponent("r\($0).png") }[0]
+        #expect(Fixtures.imageInfo(image)?.width == 100)
+        #expect(dark(image, 95, 5))   // top-left square turns clockwise to the top-right
+        #expect(!dark(image, 5, 5))
+    }
+
+    // Checkpoint 2 I3: images show the crop box, as viewers do.
+    @Test func rendersOnlyTheCropBox() throws {
+        let doc = try #require(PDFDocument(url: try Fixtures.makeMarkedPDF(at: dir.appendingPathComponent("plain.pdf"))))
+        let url = dir.appendingPathComponent("c.pdf")
+        doc.page(at: 0)?.setBounds(CGRect(x: 0, y: 50, width: 100, height: 50), for: .cropBox)
+        #expect(doc.write(to: url))
+        let image = try PDFBackend.toImages(url, format: .png, dpi: 72) { dir.appendingPathComponent("c\($0).png") }[0]
+        let info = try #require(Fixtures.imageInfo(image))
+        #expect(info.width == 100 && info.height == 50)
+        #expect(dark(image, 5, 5))
+    }
+
+    // Checkpoint 2 I4: annotations (highlights, stamps, filled forms) appear in images.
+    @Test func rendersAnnotations() throws {
+        let doc = try #require(PDFDocument(url: try Fixtures.makeMarkedPDF(at: dir.appendingPathComponent("plain.pdf"))))
+        let url = dir.appendingPathComponent("a.pdf")
+        let square = PDFAnnotation(bounds: CGRect(x: 150, y: 0, width: 50, height: 30), forType: .square, withProperties: nil)
+        square.color = .black
+        square.interiorColor = .black
+        doc.page(at: 0)?.addAnnotation(square)
+        #expect(doc.write(to: url))
+        let image = try PDFBackend.toImages(url, format: .png, dpi: 72) { dir.appendingPathComponent("a\($0).png") }[0]
+        #expect(dark(image, 185, 90))
     }
 }

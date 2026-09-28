@@ -1,4 +1,5 @@
 import Foundation
+import PDFKit
 import Testing
 @testable import ConvertKit
 import TestSupport
@@ -104,5 +105,40 @@ import TestSupport
         #expect(PDFBackend.pageLabel(for: [3]) == "p3")
         #expect(PDFBackend.pageLabel(for: [1, 2, 3]) == "p1-3")
         #expect(PDFBackend.pageLabel(for: [5, 4]) == "p5-4")
+    }
+
+    /// 3-page PDF whose page 1 links to page 3.
+    private func pdfWithLink(_ name: String) throws -> URL {
+        let url = try Fixtures.makeLinkedPDF(at: dir.appendingPathComponent(name))
+        #expect(Fixtures.linkTargets(url) == [[2], [], []])
+        return url
+    }
+
+    // Checkpoint 2 I1: internal links must follow their pages.
+    @Test func mergeKeepsInternalLinks() throws {
+        let source = try pdfWithLink("l.pdf")
+        try PDFBackend.merge([source, source], to: out())
+        #expect(Fixtures.linkTargets(out()) == [[2], [], [], [5], [], []])
+    }
+
+    @Test func reorderRetargetsLinks() throws {
+        try PDFBackend.reorder(try pdfWithLink("l.pdf"), order: try PageRange.parse("2,3,1"), to: out())
+        #expect(Fixtures.linkTargets(out()) == [[], [], [1]])
+    }
+
+    @Test func splitDropsLinksToPagesThatAreGone() throws {
+        let outputs = try PDFBackend.split(try pdfWithLink("l.pdf"), ranges: nil) { out("s\($0[0]).pdf") }
+        #expect(Fixtures.linkTargets(outputs[0]) == [[]])
+    }
+
+    // Checkpoint 2 I2: owner-password PDFs that forbid assembly must still rotate (or fail loudly).
+    @Test(.enabled(if: Fixtures.hasQPDF))
+    func rotateWorksOnPermissionRestrictedPDF() throws {
+        let source = try pdf("open.pdf", pages: 1)
+        let restricted = dir.appendingPathComponent("restricted.pdf")
+        try ProcessRunner.runChecked(Fixtures.qpdf, ["--encrypt", "", "own", "256", "--modify=none", "--",
+                                                     source.path, restricted.path])
+        try PDFBackend.rotate(restricted, degrees: 90, pages: nil, to: out())
+        #expect(Fixtures.rotations(out()) == [90])
     }
 }

@@ -71,6 +71,12 @@ private func hasPair(_ args: [String], _ a: String, _ b: String) -> Bool {
             try MediaBackend.convert(input, to: output, format: .mp4, locator: ToolLocator(searchPaths: []))
         }
     }
+    @Test func webmAndWMVArguments() throws {
+        let webm = try MediaBackend.convertArguments(input: input, output: output, format: .webm)
+        #expect(hasPair(webm, "-pix_fmt", "yuv420p"))
+        let wmv = try MediaBackend.convertArguments(input: input, output: output, format: .wmv)
+        #expect(hasPair(wmv, "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2"))
+    }
 }
 
 @Suite(.enabled(if: Fixtures.has(.ffmpeg) && Fixtures.has(.ffprobe)))
@@ -130,5 +136,20 @@ struct MediaIntegrationTests {
         let out = dir.appendingPathComponent("bogus.mp4")
         #expect(throws: PeelError.self) { try MediaBackend.convert(bogus, to: out, format: .mp4) }
         #expect(!FileManager.default.fileExists(atPath: out.path))
+    }
+
+    // Checkpoint 3 I2: GIF → WebM (RGBA source) must work.
+    @Test func gifToWebM() throws {
+        let gif = try Fixtures.makeImage(at: dir.appendingPathComponent("anim.gif"), width: 101, height: 77, type: .gif)
+        let out = dir.appendingPathComponent("anim.webm")
+        try MediaBackend.convert(gif, to: out, format: .webm)
+        #expect(FileManager.default.fileExists(atPath: out.path))
+    }
+
+    // Checkpoint 3 I3: odd-sized video → WMV must work.
+    @Test func oddSizedVideoToWMV() throws {
+        let out = dir.appendingPathComponent("out.wmv")
+        try MediaBackend.convert(sample, to: out, format: .wmv)
+        #expect(FileManager.default.fileExists(atPath: out.path))
     }
 }
