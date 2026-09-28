@@ -1,0 +1,3 @@
+import PeelCLI
+
+Peel.runMain()
