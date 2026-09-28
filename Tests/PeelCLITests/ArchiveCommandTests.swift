@@ -16,7 +16,7 @@ import TestSupport
 
         let result = runPeel(["x", zip.path, "-o", dir.appendingPathComponent("out").path])
         #expect(result.code == 0)
-        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("out/stuff/stuff/a.txt").path))
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("out/stuff/a.txt").path))
     }
 
     @Test func extractMissingFileFails() throws {

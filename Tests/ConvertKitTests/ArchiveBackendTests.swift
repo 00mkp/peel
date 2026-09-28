@@ -23,9 +23,9 @@ import TestSupport
         let zip = dir.appendingPathComponent("bundle.zip")
         try ArchiveBackend.create([folder], at: zip)
         let out = try ArchiveBackend.extract(zip)
-        #expect(out.lastPathComponent == "bundle")
-        #expect(try contents(out.appendingPathComponent("My Files/résumé.txt")) == "a")
-        #expect(try contents(out.appendingPathComponent("My Files/sub/b.txt")) == "b")
+        #expect(out.lastPathComponent == "My Files 2")
+        #expect(try contents(out.appendingPathComponent("résumé.txt")) == "a")
+        #expect(try contents(out.appendingPathComponent("sub/b.txt")) == "b")
     }
 
     @Test func tarGzRoundTripWithMultipleInputs() throws {
@@ -43,7 +43,7 @@ import TestSupport
         let zip = dir.appendingPathComponent("bundle.zip")
         try ArchiveBackend.create([folder], at: zip)
         _ = try ArchiveBackend.extract(zip)
-        #expect(try ArchiveBackend.extract(zip).lastPathComponent == "bundle 2")
+        #expect(try ArchiveBackend.extract(zip).lastPathComponent == "My Files 3")
     }
 
     @Test func plainGzipBecomesAFile() throws {
@@ -60,8 +60,8 @@ import TestSupport
         let zip = folder.appendingPathComponent("backup.zip")
         try ArchiveBackend.create([folder], at: zip)
         let out = try ArchiveBackend.extract(zip, into: dir)
-        #expect(!FileManager.default.fileExists(atPath: out.appendingPathComponent("My Files/backup.zip").path))
-        let names = try FileManager.default.contentsOfDirectory(atPath: out.appendingPathComponent("My Files").path)
+        #expect(!FileManager.default.fileExists(atPath: out.appendingPathComponent("backup.zip").path))
+        let names = try FileManager.default.contentsOfDirectory(atPath: out.path)
         #expect(!names.contains { $0.hasPrefix(".peel-") })
     }
 
@@ -99,8 +99,38 @@ import TestSupport
         try FileManager.default.createDirectory(at: holder, withIntermediateDirectories: true)
         let zip = holder.appendingPathComponent("b.zip")
         try ArchiveBackend.create([folder], at: zip)
-        let out = try ArchiveBackend.extract(zip, into: dir, planner: OutputPlanner(force: true))
-        #expect(out.lastPathComponent == "b 2")
+        let out = try ArchiveBackend.extract(zip, into: holder.deletingLastPathComponent(), planner: OutputPlanner(force: true))
+        #expect(out.lastPathComponent == "My Files 2")
         #expect(FileManager.default.fileExists(atPath: zip.path))
+    }
+
+    // Final review I1: --force must never wipe an existing folder (it may hold files not in the archive).
+    @Test func forceExtractNeverWipesAnExistingFolder() throws {
+        let zip = dir.appendingPathComponent("My Files.zip")
+        try ArchiveBackend.create([folder], at: zip)
+        try Fixtures.writeText("precious", to: folder.appendingPathComponent("new-work.txt"))
+        let out = try ArchiveBackend.extract(zip, planner: OutputPlanner(force: true))
+        #expect(try contents(folder.appendingPathComponent("new-work.txt")) == "precious")
+        #expect(out.lastPathComponent == "My Files 2")
+    }
+
+    // Final review I2: a lone top-level folder is not nested inside another folder of the same name.
+    @Test func loneTopLevelFolderIsNotNested() throws {
+        let zip = dir.appendingPathComponent("stuff.zip")
+        try ArchiveBackend.create([folder], at: zip)
+        let out = try ArchiveBackend.extract(zip, into: dir.appendingPathComponent("out"))
+        #expect(out.lastPathComponent == "My Files")
+        #expect(try contents(out.appendingPathComponent("résumé.txt")) == "a")
+    }
+
+    // Final review I3: zipping a symlinked folder archives the folder, not a dangling link.
+    @Test func zipFollowsATopLevelFolderSymlink() throws {
+        let link = dir.appendingPathComponent("linkdir")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: folder)
+        let zip = dir.appendingPathComponent("l.zip")
+        try ArchiveBackend.create([link], at: zip)
+        let out = try ArchiveBackend.extract(zip, into: dir.appendingPathComponent("out"))
+        #expect(out.lastPathComponent == "linkdir")
+        #expect(try contents(out.appendingPathComponent("résumé.txt")) == "a")
     }
 }

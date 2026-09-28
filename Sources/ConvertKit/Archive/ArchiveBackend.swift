@@ -28,17 +28,34 @@ public enum ArchiveBackend {
         }
 
         let unar = (format == .rar || format == .sevenZip) ? try locator.require(.unar) : nil
-        let destination = planner.resolve(parent.appendingPathComponent(base, isDirectory: true), avoiding: [archive])
-        try AtomicOutput.write(to: destination) { temp in
-            try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: false)
-            if let unar {
-                try ProcessRunner.runChecked(unar, ["-quiet", "-no-directory", "-output-directory", temp.path, archive.path])
-            } else if format == .zip {
-                try ProcessRunner.runChecked(ditto, ["-x", "-k", archive.path, temp.path])
-            } else {
-                try ProcessRunner.runChecked(tar, ["-xf", archive.path, "-C", temp.path])
-            }
+        let fm = FileManager.default
+        try fm.createDirectory(at: parent, withIntermediateDirectories: true)
+        let staging = parent.appendingPathComponent(".peel-\(UUID().uuidString)", isDirectory: true)
+        InterruptCleanup.track(staging)
+        defer {
+            try? fm.removeItem(at: staging)
+            InterruptCleanup.untrack(staging)
         }
+        try fm.createDirectory(at: staging, withIntermediateDirectories: false)
+        if let unar {
+            try ProcessRunner.runChecked(unar, ["-quiet", "-no-directory", "-output-directory", staging.path, archive.path])
+        } else if format == .zip {
+            try ProcessRunner.runChecked(ditto, ["-x", "-k", archive.path, staging.path])
+        } else {
+            try ProcessRunner.runChecked(tar, ["-xf", archive.path, "-C", staging.path])
+        }
+
+        // Like Finder and oh-my-zsh's `x`: a lone top-level folder becomes the result instead of being nested.
+        let entries = try fm.contentsOfDirectory(at: staging, includingPropertiesForKeys: nil)
+            .filter { !["__MACOSX", ".DS_Store"].contains($0.lastPathComponent) }
+        var isFolder: ObjCBool = false
+        let lone = entries.count == 1 && fm.fileExists(atPath: entries[0].path, isDirectory: &isFolder) && isFolder.boolValue
+        let result = lone ? entries[0] : staging
+        let name = lone ? entries[0].lastPathComponent : base
+        // Folders are never replaced, even with --force: that would delete files that aren't in the archive.
+        let destination = OutputPlanner(force: false)
+            .resolve(parent.appendingPathComponent(name, isDirectory: true), avoiding: [archive])
+        try fm.moveItem(at: result, to: destination)
         return destination
     }
 
@@ -55,25 +72,55 @@ public enum ArchiveBackend {
         else { throw PeelError.invalidArgument("archive name must end in .zip, .tar.gz, .tgz or .tar") }
 
         let fm = FileManager.default
-        let staging = fm.temporaryDirectory.appendingPathComponent("peel-stage-\(UUID().uuidString)", isDirectory: true)
-        try fm.createDirectory(at: staging, withIntermediateDirectories: true)
-        defer { try? fm.removeItem(at: staging) }
-        for path in paths {
-            let target = staging.appendingPathComponent(path.lastPathComponent)
-            guard !fm.fileExists(atPath: target.path) else {
-                throw PeelError.invalidArgument("two inputs are both named \(path.lastPathComponent)")
-            }
-            try fm.copyItem(at: path, to: target)
-        }
         let names = paths.map(\.lastPathComponent)
+        let isSymlink = { (url: URL) in (try? fm.destinationOfSymbolicLink(atPath: url.path)) != nil }
+        // Archive in place when possible (no copy of the data). Stage (APFS clones) only for several inputs,
+        // a top-level symlink (archive its target under the link's name), or an output inside an input.
+        let outputInsideInput = paths.contains { input in
+            var ancestor = output.deletingLastPathComponent()
+            while ancestor.path != "/" {
+                if OutputPlanner.sameFile(ancestor, input) { return true }
+                ancestor = ancestor.deletingLastPathComponent()
+            }
+            return false
+        }
+        var root = paths[0].deletingLastPathComponent()
+        var staging: URL?
+        if paths.count > 1 || paths.contains(where: isSymlink) || outputInsideInput {
+            let stage = fm.temporaryDirectory.appendingPathComponent("peel-stage-\(UUID().uuidString)", isDirectory: true)
+            InterruptCleanup.track(stage)
+            staging = stage
+            root = stage
+        }
+        defer {
+            if let staging {
+                try? fm.removeItem(at: staging)
+                InterruptCleanup.untrack(staging)
+            }
+        }
+        if let staging {
+            try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+            for path in paths {
+                let target = staging.appendingPathComponent(path.lastPathComponent)
+                guard !fm.fileExists(atPath: target.path) else {
+                    throw PeelError.invalidArgument("two inputs are both named \(path.lastPathComponent)")
+                }
+                try fm.copyItem(at: path.resolvingSymlinksInPath(), to: target)
+            }
+        }
 
         try AtomicOutput.write(to: output) { temp in
             switch kind {
             case "zip":
-                try ProcessRunner.runChecked(ditto, ["-c", "-k", "--sequesterRsrc", staging.path, temp.path])
+                if let staging {
+                    // The staging folder's contents are the archive's top level.
+                    try ProcessRunner.runChecked(ditto, ["-c", "-k", "--sequesterRsrc", staging.path, temp.path])
+                } else {
+                    try ProcessRunner.runChecked(ditto, ["-c", "-k", "--sequesterRsrc", "--keepParent", paths[0].path, temp.path])
+                }
             default:
                 let flags = kind == "tar" ? "-cf" : "-czf"
-                try ProcessRunner.runChecked(tar, [flags, temp.path, "-C", staging.path] + names,
+                try ProcessRunner.runChecked(tar, [flags, temp.path, "-C", root.path] + names,
                                              environment: ["COPYFILE_DISABLE": "1"])
             }
         }
