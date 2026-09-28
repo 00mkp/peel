@@ -36,6 +36,8 @@ public struct Peel: ParsableCommand {
 
     public static func runMain() -> Never {
         InterruptCleanup.install()
-        Foundation.exit(execute(nil))
+        let code = execute(nil)
+        InterruptCleanup.yieldIfInterrupted()
+        Foundation.exit(code)
     }
 }

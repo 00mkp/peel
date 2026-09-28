@@ -7,6 +7,7 @@ public enum InterruptCleanup {
     private static var temps: Set<URL> = []
     private static var processes: [ObjectIdentifier: Process] = [:]
     private static var sources: [DispatchSourceSignal] = []
+    private static var interrupted = false
 
     public static func install() {
         lock.lock()
@@ -21,6 +22,18 @@ public enum InterruptCleanup {
         }
     }
 
+    /// Call before exiting normally. If an interrupt is being handled, the handler owns the exit
+    /// (so the status is 128+signal, not the failure the killed tool caused on the main thread).
+    public static func yieldIfInterrupted() {
+        while true {
+            lock.lock()
+            let handling = interrupted
+            lock.unlock()
+            if !handling { return }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+    }
+
     static func track(_ url: URL) { lock.lock(); temps.insert(url); lock.unlock() }
     static func untrack(_ url: URL) { lock.lock(); temps.remove(url); lock.unlock() }
     static func track(_ process: Process) { lock.lock(); processes[ObjectIdentifier(process)] = process; lock.unlock() }
@@ -28,6 +41,7 @@ public enum InterruptCleanup {
 
     private static func cleanUpAndExit(_ signalNumber: Int32) -> Never {
         lock.lock()
+        interrupted = true
         let running = Array(processes.values)
         let inFlight = temps
         lock.unlock()
