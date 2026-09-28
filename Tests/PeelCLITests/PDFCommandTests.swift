@@ -81,4 +81,13 @@ import TestSupport
         #expect(result.code == 0)
         #expect(result.out.contains { $0.contains("pages:") && $0.contains("3") })
     }
+
+    // Checkpoint 1 I1: -o naming the second input must not overwrite it, even with --force.
+    @Test func mergeNeverOverwritesAnyInput() throws {
+        let a = try pdf("a.pdf", pages: 2)
+        let b = try pdf("b.pdf", pages: 3)
+        #expect(runPeel(["pdf", "merge", a, b, "-o", b, "--force"]).code == 0)
+        #expect(Fixtures.pageTexts(URL(fileURLWithPath: b)).count == 3)
+        #expect(Fixtures.pageTexts(URL(fileURLWithPath: path("b 2.pdf"))).count == 5)
+    }
 }

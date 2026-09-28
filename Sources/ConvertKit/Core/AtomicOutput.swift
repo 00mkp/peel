@@ -11,11 +11,20 @@ public enum AtomicOutput {
         let temp = dir.appendingPathComponent(".peel-\(UUID().uuidString)" + (ext.isEmpty ? "" : "." + ext))
         do {
             try body(temp)
-            guard fm.fileExists(atPath: temp.path) else { throw PeelError.writeFailed(destination) }
-            if fm.fileExists(atPath: destination.path) {
-                try fm.removeItem(at: destination)
+            var tempIsFolder: ObjCBool = false
+            guard fm.fileExists(atPath: temp.path, isDirectory: &tempIsFolder) else { throw PeelError.writeFailed(destination) }
+            var destinationIsFolder: ObjCBool = false
+            if fm.fileExists(atPath: destination.path, isDirectory: &destinationIsFolder) {
+                guard destinationIsFolder.boolValue == tempIsFolder.boolValue else {
+                    let existing = destinationIsFolder.boolValue ? "folder" : "file"
+                    let new = tempIsFolder.boolValue ? "folder" : "file"
+                    throw PeelError.invalidArgument("won't replace the \(existing) \(destination.lastPathComponent) with a \(new)")
+                }
+                // Atomic swap: the existing item survives if the replacement fails.
+                _ = try fm.replaceItemAt(destination, withItemAt: temp)
+            } else {
+                try fm.moveItem(at: temp, to: destination)
             }
-            try fm.moveItem(at: temp, to: destination)
         } catch {
             try? fm.removeItem(at: temp)
             throw error

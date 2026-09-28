@@ -34,7 +34,7 @@ public struct OutputPlanner: Sendable {
 
     /// Plans one output derived from `input`.
     /// - Parameter output: the user's `-o`: nil → next to the input; a folder → inside it; a file → exactly that.
-    public func plan(input: URL, suffix: String = "", ext: String, output: URL? = nil) -> URL {
+    public func plan(input: URL, suffix: String = "", ext: String, output: URL? = nil, protecting others: [URL] = []) -> URL {
         let base = Self.splitName(input.lastPathComponent).base
         let name = ext.isEmpty ? base + suffix : base + suffix + "." + ext
         let target: URL
@@ -43,16 +43,17 @@ public struct OutputPlanner: Sendable {
         } else {
             target = input.deletingLastPathComponent().appendingPathComponent(name)
         }
-        return resolve(target, avoiding: input)
+        return resolve(target, avoiding: [input] + others)
     }
 
-    /// Returns `url` if it is free (or `force` is set and it isn't `input`);
+    /// Returns `url` if it is free (or `force` is set and it isn't protected);
     /// otherwise the first free "name 2.ext", "name 3.ext", …
-    public func resolve(_ url: URL, avoiding input: URL? = nil) -> URL {
+    /// Protected: any of `inputs`, or a folder containing one of them.
+    public func resolve(_ url: URL, avoiding inputs: [URL] = []) -> URL {
         let fm = FileManager.default
-        let isInput = input.map { $0.standardizedFileURL.path == url.standardizedFileURL.path } ?? false
-        if force && !isInput { return url }
-        guard isInput || fm.fileExists(atPath: url.path) else { return url }
+        let isProtected = Self.isProtected(url, inputs: inputs)
+        if force && !isProtected { return url }
+        guard isProtected || fm.fileExists(atPath: url.path) else { return url }
         let dir = url.deletingLastPathComponent()
         let (base, ext) = Self.splitName(url.lastPathComponent)
         var n = 2
@@ -62,5 +63,30 @@ public struct OutputPlanner: Sendable {
             if !fm.fileExists(atPath: candidate.path) { return candidate }
             n += 1
         }
+    }
+
+    /// Whether writing `url` could clobber an input: it is an input, or a folder containing one.
+    /// Compared by file identity, so differences in letter case (APFS) and symlinks don't fool it.
+    static func isProtected(_ url: URL, inputs: [URL]) -> Bool {
+        for input in inputs {
+            if input.standardizedFileURL.path == url.standardizedFileURL.path || sameFile(url, input) { return true }
+            var ancestor = input.resolvingSymlinksInPath().deletingLastPathComponent()
+            while ancestor.path != "/" {
+                if sameFile(url, ancestor) { return true }
+                ancestor = ancestor.deletingLastPathComponent()
+            }
+        }
+        return false
+    }
+
+    /// Same file or folder on disk; false if either doesn't exist.
+    static func sameFile(_ a: URL, _ b: URL) -> Bool {
+        guard let idA = identifier(a), let idB = identifier(b) else { return false }
+        return idA.isEqual(idB)
+    }
+
+    private static func identifier(_ url: URL) -> NSObject? {
+        let resolved = URL(fileURLWithPath: url.resolvingSymlinksInPath().path)
+        return (try? resolved.resourceValues(forKeys: [.fileResourceIdentifierKey]))?.fileResourceIdentifier as? NSObject
     }
 }

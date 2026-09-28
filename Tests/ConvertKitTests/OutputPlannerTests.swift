@@ -71,4 +71,36 @@ import TestSupport
         let input = dir.appendingPathComponent("notes.txt.gz")
         #expect(OutputPlanner().plan(input: input, ext: "").lastPathComponent == "notes.txt")
     }
+
+    // Checkpoint 1 C1: APFS is case-insensitive — IMG_0001.JPG → IMG_0001.jpg is the same file.
+    @Test func forceNeverTargetsInputDifferingOnlyInCase() {
+        let input = touch("IMG_0001.JPG")
+        #expect(OutputPlanner(force: true).plan(input: input, ext: "jpg").lastPathComponent == "IMG_0001 2.jpg")
+    }
+
+    // Checkpoint 1 C1: an input reached through a symlink is still the input.
+    @Test func forceNeverTargetsSymlinkedInput() throws {
+        let real = touch("real.jpg")
+        let link = dir.appendingPathComponent("link.jpg")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+        let planned = OutputPlanner(force: true).plan(input: link, ext: "jpg", output: real)
+        #expect(planned.lastPathComponent == "real 2.jpg")
+    }
+
+    // Checkpoint 1 I1: every input is protected, not just the one the name derives from.
+    @Test func protectsEveryInput() {
+        let a = touch("a.pdf")
+        let b = touch("b.pdf")
+        let planned = OutputPlanner(force: true).plan(input: a, suffix: "", ext: "pdf", output: b, protecting: [a, b])
+        #expect(planned.lastPathComponent == "b 2.pdf")
+    }
+
+    // Checkpoint 1 I1: a folder that contains an input is never a replaceable target.
+    @Test func neverTargetsAFolderContainingAnInput() throws {
+        let folder = dir.appendingPathComponent("b", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let archive = folder.appendingPathComponent("b.zip")
+        FileManager.default.createFile(atPath: archive.path, contents: Data("x".utf8))
+        #expect(OutputPlanner(force: true).resolve(folder, avoiding: [archive]).lastPathComponent == "b 2")
+    }
 }

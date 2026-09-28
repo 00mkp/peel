@@ -31,7 +31,8 @@ extension PDFCommand {
             let reporter = Reporter(verbose: options.verbose)
             do {
                 try inputs.forEach(Paths.requireExists)
-                let output = options.planner.plan(input: inputs[0], suffix: "-merged", ext: "pdf", output: options.outputURL)
+                let output = options.planner.plan(input: inputs[0], suffix: "-merged", ext: "pdf", output: options.outputURL,
+                                                  protecting: inputs)
                 try PDFBackend.merge(inputs, to: output)
                 reporter.record(inputs[0], outputs: [output])
             } catch {
