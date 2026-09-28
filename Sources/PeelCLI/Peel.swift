@@ -1,4 +1,5 @@
 import ArgumentParser
+import ConvertKit
 import Foundation
 
 public struct Peel: ParsableCommand {
@@ -34,6 +35,7 @@ public struct Peel: ParsableCommand {
     }
 
     public static func runMain() -> Never {
+        InterruptCleanup.install()
         Foundation.exit(execute(nil))
     }
 }

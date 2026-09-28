@@ -9,6 +9,8 @@ public enum AtomicOutput {
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let ext = OutputPlanner.splitName(destination.lastPathComponent).ext
         let temp = dir.appendingPathComponent(".peel-\(UUID().uuidString)" + (ext.isEmpty ? "" : "." + ext))
+        InterruptCleanup.track(temp)
+        defer { InterruptCleanup.untrack(temp) }
         do {
             try body(temp)
             var tempIsFolder: ObjCBool = false

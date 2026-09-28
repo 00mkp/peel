@@ -101,6 +101,8 @@ public enum ProcessRunner {
         if !environment.isEmpty {
             process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
         }
+        InterruptCleanup.track(process)
+        defer { InterruptCleanup.untrack(process) }
         try process.run()
         process.waitUntilExit()
         try? outHandle.close()
