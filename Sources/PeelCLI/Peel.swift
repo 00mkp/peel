@@ -6,7 +6,7 @@ public struct Peel: ParsableCommand {
         commandName: "peel",
         abstract: "Convert and edit images, PDFs, audio/video, subtitles and archives — all locally.",
         version: "0.1.0",
-        subcommands: [Convert.self, PDFCommand.self, Formats.self])
+        subcommands: [Convert.self, PDFCommand.self, MediaCommand.self, Formats.self])
 
     public init() {}
 
