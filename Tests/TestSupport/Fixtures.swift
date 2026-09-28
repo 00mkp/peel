@@ -2,6 +2,7 @@ import ConvertKit
 import CoreGraphics
 import CoreText
 import Foundation
+import ImageIO
 import PDFKit
 
 public enum FixtureError: Error {
@@ -79,5 +80,17 @@ extension Fixtures {
     public static func writeText(_ text: String, to url: URL) throws -> URL {
         try Data(text.utf8).write(to: url)
         return url
+    }
+}
+
+extension Fixtures {
+    /// Raw pixel size and UTType identifier of an image file, as stored (orientation not applied).
+    public static func imageInfo(_ url: URL) -> (width: Int, height: Int, type: String)? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let type = CGImageSourceGetType(source),
+              let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = props[kCGImagePropertyPixelWidth] as? Int,
+              let height = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
+        return (width, height, type as String)
     }
 }
