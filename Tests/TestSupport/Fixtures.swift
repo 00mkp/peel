@@ -4,6 +4,7 @@ import CoreText
 import Foundation
 import ImageIO
 import PDFKit
+import UniformTypeIdentifiers
 
 public enum FixtureError: Error {
     case cannotCreate(URL)
@@ -92,5 +93,45 @@ extension Fixtures {
               let width = props[kCGImagePropertyPixelWidth] as? Int,
               let height = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
         return (width, height, type as String)
+    }
+}
+
+extension Fixtures {
+    /// Writes a solid orange image. `alpha: true` makes the left half fully transparent.
+    /// `orientation` stores an EXIF orientation tag (e.g. 6 = rotate 90° clockwise to display).
+    @discardableResult
+    public static func makeImage(at url: URL, width: Int, height: Int, type: UTType,
+                                 alpha: Bool = false, orientation: Int? = nil) throws -> URL {
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            throw FixtureError.cannotCreate(url)
+        }
+        context.setFillColor(CGColor(red: 0.9, green: 0.4, blue: 0.1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        if alpha { context.clear(CGRect(x: 0, y: 0, width: width / 2, height: height)) }
+        guard let image = context.makeImage(),
+              let destination = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else {
+            throw FixtureError.cannotCreate(url)
+        }
+        var properties: [CFString: Any] = [:]
+        if let orientation { properties[kCGImagePropertyOrientation] = orientation }
+        CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { throw FixtureError.cannotCreate(url) }
+        return url
+    }
+
+    /// RGBA of one pixel, measured from the top-left corner.
+    public static func pixel(_ url: URL, x: Int, y: Int) -> (r: UInt8, g: UInt8, b: UInt8, a: UInt8)? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
+                                      bytesPerRow: image.width * 4, space: space,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard let data = context.data?.assumingMemoryBound(to: UInt8.self) else { return nil }
+        let offset = (y * image.width + x) * 4
+        return (data[offset], data[offset + 1], data[offset + 2], data[offset + 3])
     }
 }
