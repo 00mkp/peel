@@ -7,6 +7,9 @@ struct Doctor: ParsableCommand {
 
     static func report(locator: ToolLocator) -> [String] {
         var lines = ["peel \(Peel.configuration.version)", ""]
+        let brew = "Homebrew".padding(toLength: 13, withPad: " ", startingAt: 0)
+        lines.append(locator.homebrew.map { "✓ \(brew)\($0.path)" }
+                     ?? "✗ \(brew)not found → \(ToolLocator.homebrewMissingNote)")
         for tool in Tool.allCases {
             let name = tool.rawValue.padding(toLength: 13, withPad: " ", startingAt: 0)
             if let url = locator.find(tool) {

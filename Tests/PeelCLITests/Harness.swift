@@ -1,3 +1,4 @@
+import ConvertKit
 import Foundation
 @testable import PeelCLI
 
@@ -24,4 +25,15 @@ func runPeel(_ arguments: [String]) -> CLIResult {
         Peel.execute(arguments)
     }
     return CLIResult(code: code, out: out.all, err: err.all)
+}
+
+/// The built `peel` executable (scripts/test.sh builds it before the tests run).
+let peelBinary = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    .appendingPathComponent(".build/debug/peel")
+
+/// Runs the real binary — for behaviour that depends on the process environment.
+func runBinary(_ arguments: [String], environment: [String: String] = [:]) throws -> (code: Int32, out: String, err: String) {
+    let result = try ProcessRunner.run(peelBinary, arguments, environment: environment)
+    return (result.exitCode, result.stdout, result.stderr)
 }

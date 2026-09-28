@@ -54,4 +54,11 @@ import TestSupport
                                            environment: ["PEEL_TEST": "yes"])
         #expect(result.stdout == "yes\n")
     }
+
+    @Test func findsHomebrew() throws {
+        let dir = try Fixtures.tempDir()
+        #expect(ToolLocator(searchPaths: [dir.path]).homebrew == nil)
+        try Fixtures.makeExecutable(at: dir.appendingPathComponent("brew"), script: "exit 0")
+        #expect(ToolLocator(searchPaths: [dir.path]).homebrew == dir.appendingPathComponent("brew"))
+    }
 }

@@ -36,18 +36,30 @@ public struct ToolLocator: Sendable {
         self.searchPaths = searchPaths
     }
 
+    /// PATH plus the Homebrew folders — or exactly `PEEL_TOOL_PATH` (colon-separated) when it is set.
     public static var standard: ToolLocator {
-        var paths = (ProcessInfo.processInfo.environment["PATH"] ?? "")
-            .split(separator: ":").map(String.init)
+        let environment = ProcessInfo.processInfo.environment
+        if let override = environment["PEEL_TOOL_PATH"] {
+            return ToolLocator(searchPaths: override.split(separator: ":").map(String.init))
+        }
+        var paths = (environment["PATH"] ?? "").split(separator: ":").map(String.init)
         for extra in ["/opt/homebrew/bin", "/usr/local/bin"] where !paths.contains(extra) {
             paths.append(extra)
         }
         return ToolLocator(searchPaths: paths)
     }
 
-    public func find(_ tool: Tool) -> URL? {
+    /// Shown whenever a tool is missing and Homebrew itself isn't installed either.
+    public static let homebrewMissingNote = "Homebrew isn't installed — get it first from https://brew.sh"
+
+    /// Homebrew's `brew`, if installed.
+    public var homebrew: URL? { findExecutable(named: "brew") }
+
+    public func find(_ tool: Tool) -> URL? { findExecutable(named: tool.rawValue) }
+
+    private func findExecutable(named name: String) -> URL? {
         for dir in searchPaths where !dir.isEmpty {
-            let url = URL(fileURLWithPath: dir).appendingPathComponent(tool.rawValue)
+            let url = URL(fileURLWithPath: dir).appendingPathComponent(name)
             if FileManager.default.isExecutableFile(atPath: url.path) { return url }
         }
         return nil
