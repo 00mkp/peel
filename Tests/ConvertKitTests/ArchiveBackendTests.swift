@@ -133,4 +133,13 @@ import TestSupport
         #expect(out.lastPathComponent == "linkdir")
         #expect(try contents(out.appendingPathComponent("résumé.txt")) == "a")
     }
+
+    // Stage 2 finding: zipping one file must store just that file, not its parent folder.
+    @Test func zippingOneFileStoresOnlyTheFile() throws {
+        let file = try Fixtures.writeText("x", to: dir.appendingPathComponent("d.txt"))
+        let zip = dir.appendingPathComponent("d.zip")
+        try ArchiveBackend.create([file], at: zip)
+        let listing = try ProcessRunner.runChecked(URL(fileURLWithPath: "/usr/bin/unzip"), ["-Z1", zip.path]).stdout
+        #expect(listing.split(separator: "\n").map(String.init) == ["d.txt"])
+    }
 }

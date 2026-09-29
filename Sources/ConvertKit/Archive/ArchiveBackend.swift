@@ -116,7 +116,12 @@ public enum ArchiveBackend {
                     // The staging folder's contents are the archive's top level.
                     try ProcessRunner.runChecked(ditto, ["-c", "-k", "--sequesterRsrc", staging.path, temp.path])
                 } else {
-                    try ProcessRunner.runChecked(ditto, ["-c", "-k", "--sequesterRsrc", "--keepParent", paths[0].path, temp.path])
+                    // --keepParent keeps a folder's own name at the top; for a single file it would
+                    // instead embed the file's parent folder, so it is only used for folders.
+                    var isFolder: ObjCBool = false
+                    _ = fm.fileExists(atPath: paths[0].path, isDirectory: &isFolder)
+                    let keepParent = isFolder.boolValue ? ["--keepParent"] : []
+                    try ProcessRunner.runChecked(ditto, ["-c", "-k", "--sequesterRsrc"] + keepParent + [paths[0].path, temp.path])
                 }
             default:
                 let flags = kind == "tar" ? "-cf" : "-czf"
