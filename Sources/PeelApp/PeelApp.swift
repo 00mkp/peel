@@ -34,8 +34,9 @@ final class WindowPresenter: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         let closing = notification.object as? NSWindow
+        // Minimized windows count too: going menu-bar-only would remove their Dock tile.
         let othersOpen = NSApp.windows.contains {
-            $0 !== closing && $0.isVisible && $0.styleMask.contains(.titled) && $0.delegate is WindowPresenter
+            $0 !== closing && ($0.isVisible || $0.isMiniaturized) && $0.delegate is WindowPresenter
         }
         if !othersOpen { NSApp.setActivationPolicy(.accessory) }   // back to menu-bar only
     }
@@ -58,7 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
-            NSApp.setActivationPolicy(.accessory)
+            // LSUIElement already starts Peel menu-bar-only. (No setActivationPolicy(.accessory) here:
+            // files opened at launch arrive first and have already shown the window with a Dock icon.)
             // First launch ever: show the window once so a fresh install doesn't look like nothing happened.
             if !UserDefaults.standard.bool(forKey: Self.launchedBeforeKey) {
                 UserDefaults.standard.set(true, forKey: Self.launchedBeforeKey)
@@ -122,6 +124,13 @@ struct PeelApp: App {
             Image(nsImage: PeelIcon.menuBarImage())
         }
         .menuBarExtraStyle(.window)
+        .commands {
+            // Peel → Settings… (⌘,) while a window is open and the app menu is showing.
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") { delegate.actions.openSettings() }
+                    .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 }
 

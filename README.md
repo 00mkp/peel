@@ -79,10 +79,15 @@ peel uninstall-quick-actions
 ## Peel.app
 
 `./install.sh` also builds `~/Applications/Peel.app` (or run `scripts/build-app.sh`; set `APP_DIR`
-to install elsewhere). Drop files onto its window, its menu-bar popover, or its Dock icon, pick an
-action, adjust options and press Run. Actions that need a tool you don't have are greyed out with
-the install command; Peel re-checks whenever you switch back to it. **Settings** shows every optional
-tool's status.
+to install elsewhere). Peel lives in the menu bar — look for the peel-twist icon. Click it, drop
+files into the popover (or use **Choose Files…**), pick an action, adjust options and press Run.
+
+- **Open Window** in the popover gives a larger window; it also opens when you open Peel again from
+  Finder/Spotlight or open files with it. The Dock icon shows only while a Peel window is open.
+- The gear menu has **Settings…** (optional tools, **Open at Login**) and **Quit Peel**; with a window
+  open, Settings is also in the Peel menu (⌘,).
+- Actions that need a tool you don't have are listed separately with the install command; Peel
+  re-checks whenever you come back to it.
 
 ## Behaviour
 
