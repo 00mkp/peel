@@ -17,13 +17,20 @@ final class Reporter {
         for url in outputs { Console.out("✓ \(Paths.display(url))") }
     }
 
-    func failure(_ input: URL?, _ error: Error) {
+    private var homebrewNoted = false
+
+    /// `label` names a whole-selection job (e.g. "merge") when there's no single input to blame.
+    func failure(_ input: URL?, _ error: Error, label: String? = nil) {
         failed += 1
         let message = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
-        Console.err(input.map { "✗ \($0.lastPathComponent): \(message)" } ?? "✗ \(message)")
+        let subject = input?.lastPathComponent ?? label
+        Console.err(subject.map { "✗ \($0): \(message)" } ?? "✗ \(message)")
         if let peelError = error as? PeelError, case let .missingTool(name, _) = peelError {
             if let tool = Tool(rawValue: name) { Console.err("  \(name) adds \(tool.enables)") }
-            if ToolLocator.standard.homebrew == nil { Console.err("  " + ToolLocator.homebrewMissingNote) }
+            if !homebrewNoted, ToolLocator.standard.homebrew == nil {
+                homebrewNoted = true   // once per run, not once per file
+                Console.err("  " + ToolLocator.homebrewMissingNote)
+            }
         }
         if verbose, let peelError = error as? PeelError,
            case let .toolFailed(_, _, _, details) = peelError, !details.isEmpty {

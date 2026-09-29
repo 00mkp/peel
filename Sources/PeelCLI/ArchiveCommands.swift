@@ -49,8 +49,13 @@ struct ZipCommand: ParsableCommand {
         let inputs = paths.map(Paths.url)
         let reporter = Reporter(verbose: options.verbose)
         do {
-            let output = options.outputURL.map { options.planner.resolve($0, avoiding: inputs) }
-                ?? options.planner.plan(input: inputs[0], ext: "zip", protecting: inputs)
+            // -o may be a file (bundle.zip / .tar.gz) or a folder (then <first>.zip goes inside it).
+            let output: URL
+            if let target = options.outputURL, !OutputPlanner.isDirectory(target) {
+                output = options.planner.resolve(target, avoiding: inputs)
+            } else {
+                output = options.planner.plan(input: inputs[0], ext: "zip", output: options.outputURL, protecting: inputs)
+            }
             try ArchiveBackend.create(inputs, at: output)
             reporter.record(nil, outputs: [output])
         } catch {

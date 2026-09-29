@@ -10,10 +10,17 @@ enum Paths {
     }
 
     /// Path relative to the current directory when inside it, absolute otherwise.
-    static func display(_ url: URL) -> String {
-        let cwd = FileManager.default.currentDirectoryPath + "/"
-        let path = url.standardizedFileURL.path
-        return path.hasPrefix(cwd) ? String(path.dropFirst(cwd.count)) : path
+    /// (/tmp, /var and /etc are symlinks into /private; both spellings count as the same place.)
+    static func display(_ url: URL, cwd: String = FileManager.default.currentDirectoryPath) -> String {
+        func normalized(_ path: String) -> String {
+            for alias in ["/private/tmp", "/private/var", "/private/etc"] where path == alias || path.hasPrefix(alias + "/") {
+                return String(path.dropFirst("/private".count))
+            }
+            return path
+        }
+        let base = normalized(URL(fileURLWithPath: cwd).standardizedFileURL.path) + "/"
+        let path = normalized(url.standardizedFileURL.path)
+        return path.hasPrefix(base) ? String(path.dropFirst(base.count)) : path
     }
 
     static func requireExists(_ url: URL) throws {

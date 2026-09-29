@@ -39,7 +39,7 @@ public struct ToolLocator: Sendable {
     /// PATH plus the Homebrew folders — or exactly `PEEL_TOOL_PATH` (colon-separated) when it is set.
     public static var standard: ToolLocator {
         let environment = ProcessInfo.processInfo.environment
-        if let override = environment["PEEL_TOOL_PATH"] {
+        if let override = environment["PEEL_TOOL_PATH"], !override.isEmpty {   // empty = not set
             return ToolLocator(searchPaths: override.split(separator: ":").map(String.init))
         }
         var paths = (environment["PATH"] ?? "").split(separator: ":").map(String.init)

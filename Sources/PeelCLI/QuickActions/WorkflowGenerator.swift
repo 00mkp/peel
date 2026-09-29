@@ -39,6 +39,10 @@ enum WorkflowGenerator {
     static func write(_ kind: QuickActionKind, peel: URL, into directory: URL,
                       testLog: URL? = nil, testChoice: String? = nil) throws -> URL {
         let bundle = directory.appendingPathComponent(kind.bundleName, isDirectory: true)
+        if FileManager.default.fileExists(atPath: bundle.path)
+            && !installedBundles(in: directory).contains(where: { $0.lastPathComponent == bundle.lastPathComponent }) {
+            throw PeelError.invalidArgument("a workflow named \(kind.bundleName) already exists and wasn't made by peel")
+        }
         let command = script(for: kind, peel: peel, testLog: testLog, testChoice: testChoice)
         try AtomicOutput.write(to: bundle) { temp in
             let contents = temp.appendingPathComponent("Contents")

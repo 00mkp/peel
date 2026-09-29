@@ -36,7 +36,7 @@ extension PDFCommand {
                 try PDFBackend.merge(inputs, to: output)
                 reporter.record(inputs[0], outputs: [output])
             } catch {
-                reporter.failure(nil, error)
+                reporter.failure(nil, error, label: "merge")
             }
             try reporter.finish()
         }
@@ -48,6 +48,12 @@ extension PDFCommand {
         @Option(help: "Ranges, one output file each (e.g. 1-3,7-9). Default: every page separately.")
         var pages: PageRange?
         @OptionGroup var options: OutputOptions
+
+        func validate() throws {
+            if let output = options.output, output.lowercased().hasSuffix(".pdf") {
+                throw ValidationError("split writes several files, so -o must be a folder (got \(output))")
+            }
+        }
 
         func run() throws {
             let input = Paths.url(file)

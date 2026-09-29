@@ -27,9 +27,27 @@ struct Convert: ParsableCommand {
         if let width, width < 1 { throw ValidationError("--width must be positive") }
         if let height, height < 1 { throw ValidationError("--height must be positive") }
         guard (10...1200).contains(dpi) else { throw ValidationError("--dpi must be 10-1200") }
+        guard let output = options.output else { return }
+        let target = Paths.url(output)
+        let isFolder = OutputPlanner.isDirectory(target)
+        let combinesIntoOnePDF = to == .pdf && files.count > 1
+            && files.allSatisfy { FileFormat(url: Paths.url($0))?.category == .image }
+        if files.count > 1 && !combinesIntoOnePDF {
+            if FileManager.default.fileExists(atPath: target.path) && !isFolder {
+                throw ValidationError("with several files, -o must be a folder (\(output) is a file)")
+            }
+        } else if !isFolder {
+            let ext = OutputPlanner.splitName(target.lastPathComponent).ext
+            if !ext.isEmpty && FileFormat(name: ext) != to {
+                throw ValidationError("-o ends in .\(ext) but --to is \(to.rawValue); use a .\(to.fileExtension) name or a folder")
+            }
+        }
     }
 
     func run() throws {
+        if quality != nil && ![.jpg, .heic, .webp, .avif].contains(to) {
+            Console.err("note: --quality only affects jpg, heic, webp and avif; \(to.rawValue) is lossless")
+        }
         let converter = Converter(planner: options.planner)
         let settings = ConvertOptions(image: ImageOptions(quality: quality, width: width, height: height), dpi: dpi)
         let reporter = Reporter(verbose: options.verbose)

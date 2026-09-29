@@ -27,7 +27,7 @@ struct QuickActionHandler {
                 ui.alert("Merge PDFs needs two or more PDF files.", copyable: nil)
                 return 1
             }
-            return report(runner.run(.pdfMerge, on: files), verb: "Merged")
+            return report(runner.run(.pdfMerge, on: files), verb: "Merged", grouped: true)
         case .split:
             guard formats.allSatisfy({ $0 == .pdf }) else {
                 ui.alert("Split PDF works on PDF files.", copyable: nil)
@@ -39,9 +39,9 @@ struct QuickActionHandler {
                 ui.alert("Extract Here works on archives (zip, tar, tar.gz, gz, rar, 7z).", copyable: nil)
                 return 1
             }
-            return report(runner.run(.extract, on: files), verb: "Extracted")
+            return report(runner.run(.extract, on: files), verb: "Extracted", noun: "archives")
         case .zip:
-            return report(runner.run(.zip, on: files), verb: "Zipped")
+            return report(runner.run(.zip, on: files), verb: "Zipped", grouped: true)
         }
     }
 
@@ -78,14 +78,20 @@ struct QuickActionHandler {
         ui.alert(message, copyable: ActionCatalog.installCommand(for: missing))
     }
 
-    private func report(_ outcomes: [ActionOutcome], verb: String) -> Int32 {
+    /// `grouped`: one job over the whole selection (merge, zip) — failures aren't pinned on the first
+    /// file. `noun`: what several outputs are called ("archives" for extract, else "files").
+    private func report(_ outcomes: [ActionOutcome], verb: String, grouped: Bool = false, noun: String = "files") -> Int32 {
         let outputs = outcomes.flatMap { (try? $0.result.get()) ?? [] }
         let failures = outcomes.compactMap { outcome -> (URL?, Error)? in
             if case let .failure(error) = outcome.result { return (outcome.input, error) }
             return nil
         }
         if failures.isEmpty {
-            ui.notify(outputs.count == 1 ? "\(verb) → \(outputs[0].lastPathComponent)" : "\(verb) into \(outputs.count) files")
+            if outputs.count == 1 {
+                ui.notify("\(verb) → \(outputs[0].lastPathComponent)")
+            } else {
+                ui.notify(noun == "files" ? "\(verb) into \(outputs.count) files" : "\(verb) \(outputs.count) \(noun)")
+            }
             return 0
         }
         let missing = failures.compactMap { failure -> MissingTool? in
@@ -98,7 +104,7 @@ struct QuickActionHandler {
         }
         let lines = failures.prefix(10).map { input, error in
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            return "\(input?.lastPathComponent ?? "selection"): \(message)"
+            return grouped ? message : "\(input?.lastPathComponent ?? "selection"): \(message)"
         }
         let header = outputs.isEmpty ? "Peel couldn't finish:" : "\(verb) \(outputs.count) file(s), but some failed:"
         ui.alert(([header] + lines).joined(separator: "\n"), copyable: nil)
