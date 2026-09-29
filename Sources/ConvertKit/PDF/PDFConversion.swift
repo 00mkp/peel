@@ -39,18 +39,22 @@ extension PDFBackend {
         }
         let doc = try open(input)
         var written: [URL] = []
-        for index in 0..<doc.pageCount {
-            if isCancelled() {
-                written.forEach { try? FileManager.default.removeItem(at: $0) }
-                throw PeelError.cancelled
+        let batch = AtomicBatch()
+        do {
+            for index in 0..<doc.pageCount {
+                if isCancelled() { throw PeelError.cancelled }
+                guard let page = doc.page(at: index) else { continue }
+                let image = try render(page, dpi: dpi)
+                let url = output(index + 1)
+                try batch.write(to: url) { temp in
+                    try ImageEncoder.write(image, to: temp, type: type, quality: format == .jpg ? 90 : nil)
+                }
+                written.append(url)
             }
-            guard let page = doc.page(at: index) else { continue }
-            let image = try render(page, dpi: dpi)
-            let url = output(index + 1)
-            try AtomicOutput.write(to: url) { temp in
-                try ImageEncoder.write(image, to: temp, type: type, quality: format == .jpg ? 90 : nil)
-            }
-            written.append(url)
+            try batch.commit()
+        } catch {
+            batch.discard()
+            throw error
         }
         return written
     }

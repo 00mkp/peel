@@ -17,6 +17,7 @@ struct MainView: View {
                     Spacer()
                     Button("Open Window") { openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true) }
                 }
+                LoginToggle()
             }
             DropArea(targeted: targeted, compact: compact)
             if !model.files.isEmpty {
@@ -87,6 +88,11 @@ struct FileList: View {
                             Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
                                 .resizable().frame(width: 16, height: 16)
                             Text(url.lastPathComponent).lineLimit(1).truncationMode(.middle)
+                            Text(AppModel.typeLabel(for: url))
+                                .font(.caption2.monospaced())
+                                .padding(.horizontal, 4)
+                                .background(RoundedRectangle(cornerRadius: 3).fill(Color.secondary.opacity(0.15)))
+                                .foregroundStyle(.secondary)
                             Spacer()
                             Button { model.remove(url) } label: { Image(systemName: "xmark.circle.fill") }
                                 .buttonStyle(.plain).foregroundStyle(.secondary)

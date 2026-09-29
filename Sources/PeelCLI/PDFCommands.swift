@@ -54,9 +54,12 @@ extension PDFCommand {
             let reporter = Reporter(verbose: options.verbose)
             do {
                 try Paths.requireExists(input)
+                var planned: [URL] = []   // parts are written together at the end, so protect earlier names
                 let outputs = try PDFBackend.split(input, ranges: pages) { group in
-                    options.planner.plan(input: input, suffix: "-" + PDFBackend.pageLabel(for: group), ext: "pdf",
-                                         output: options.outputDirectoryURL)
+                    let out = options.planner.plan(input: input, suffix: "-" + PDFBackend.pageLabel(for: group), ext: "pdf",
+                                                   output: options.outputDirectoryURL, protecting: planned)
+                    planned.append(out)
+                    return out
                 }
                 reporter.record(input, outputs: outputs)
             } catch {

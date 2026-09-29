@@ -39,7 +39,8 @@ import TestSupport
         let model = AppModel()
         model.add([try pdf("a.pdf")])
         model.selection = .pdfExtract
-        #expect(model.validationMessage != nil)
+        #expect(model.validationMessage == nil)   // nothing typed yet: no error, but Run stays off
+        #expect(!model.canRun)
         model.options.pages = "abc"
         #expect(model.validationMessage != nil)
         model.options.pages = "1-2"
@@ -155,5 +156,74 @@ import TestSupport
         model.cancel()
         await run.value
         #expect(model.results.first?.cancelled == true)
+    }
+
+    // Polish: Trim doesn't complain before anything is typed.
+    @Test func emptyRequiredFieldsShowNoErrorButBlockRun() throws {
+        let model = AppModel()
+        model.add([try Fixtures.writeText("x", to: dir.appendingPathComponent("a.mov"))])
+        model.selection = .mediaTrim
+        #expect(model.validationMessage == nil)
+        #expect(!model.canRun || model.selectedEntry?.isAvailable == false)
+        model.options.from = "abc"
+        #expect(model.validationMessage != nil)
+    }
+
+    // Polish: actions needing a missing tool are grouped separately from available ones.
+    @Test func entriesAreGroupedByAvailability() throws {
+        let model = AppModel(locator: { ToolLocator(searchPaths: []) })
+        model.add([try png("a.png")])
+        #expect(model.availableEntries.allSatisfy { $0.isAvailable })
+        #expect(model.unavailableEntries.contains { $0.kind == .convert(.webp) })
+        #expect(model.availableEntries.count + model.unavailableEntries.count == model.entries.count)
+    }
+
+    @Test func typeLabels() throws {
+        #expect(AppModel.typeLabel(for: URL(fileURLWithPath: "/tmp/a.HEIC")) == "HEIC")
+        #expect(AppModel.typeLabel(for: URL(fileURLWithPath: "/tmp/b.tar.gz")) == "TAR.GZ")
+        #expect(AppModel.typeLabel(for: dir) == "Folder")
+        #expect(AppModel.typeLabel(for: URL(fileURLWithPath: "/tmp/c.qqqq")) == "QQQQ")
+        #expect(AppModel.typeLabel(for: URL(fileURLWithPath: "/tmp/Makefile")) == "File")
+    }
+
+    @Test func removingAFileClearsResults() async throws {
+        let model = AppModel()
+        let a = try png("a.png")
+        model.add([a, try png("b.png")])
+        model.selection = .convert(.jpg)
+        await model.run()
+        #expect(!model.results.isEmpty)
+        model.remove(a)
+        #expect(model.results.isEmpty)
+    }
+
+    // Polish: Open at Login toggle.
+    @Test func openAtLogin() throws {
+        let item = FakeLoginItem()
+        let model = AppModel(loginItem: item)
+        #expect(!model.launchAtLogin)
+        model.setLaunchAtLogin(true)
+        #expect(item.enabled && model.launchAtLogin && model.loginItemError == nil)
+        item.failure = "not allowed"
+        model.setLaunchAtLogin(false)
+        #expect(model.launchAtLogin)          // unchanged when the system refuses
+        #expect(model.loginItemError?.contains("not allowed") == true)
+    }
+
+    @Test func menuBarIconIsATemplateTwist() throws {
+        let image = PeelIcon.menuBarImage()
+        #expect(image.isTemplate)
+        #expect(image.size == CGSize(width: 18, height: 18))
+        #expect(PeelIcon.inkCoverage() > 0.08 && PeelIcon.inkCoverage() < 0.6)
+    }
+}
+
+final class FakeLoginItem: LoginItem {
+    var enabled = false
+    var failure: String?
+    var isEnabled: Bool { enabled }
+    func setEnabled(_ on: Bool) throws {
+        if let failure { throw PeelError.invalidArgument(failure) }
+        enabled = on
     }
 }

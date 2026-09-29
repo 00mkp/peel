@@ -8,6 +8,8 @@ struct ToolsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            LoginToggle()
+            Divider()
             Text("Optional tools").font(.headline)
             Text("PDF tools, most image formats, subtitles, zip and tar work without them.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -30,12 +32,26 @@ struct ToolsView: View {
                 .foregroundStyle(path == nil ? Color.red : Color.green)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).bold()
-                Text(path?.path ?? missingNote ?? detail).font(.caption).foregroundStyle(.secondary)
-                if path == nil, command != nil { Text(detail).font(.caption).foregroundStyle(.secondary) }
+                // Installed: where it is. Missing: what it adds (or, for Homebrew, where to get it).
+                Text(path?.path ?? missingNote ?? "adds \(detail)").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if path == nil, let command {
                 Button("Copy \"\(command)\"") { copyToPasteboard(command) }
+            }
+        }
+    }
+}
+
+/// "Open at Login" switch shared by Settings and the menu-bar popover.
+struct LoginToggle: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle("Open at Login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+            if let error = model.loginItemError {
+                Text(error).font(.caption).foregroundStyle(.red)
             }
         }
     }

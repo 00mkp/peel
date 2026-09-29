@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Builds Peel.app from the PeelApp target and installs it to $APP_DIR (default ~/Applications).
 set -euo pipefail
-cd "$(dirname "$0")/.."
 
 APP_DIR="${APP_DIR:-$HOME/Applications}"
+case "$APP_DIR" in /*) ;; *) APP_DIR="$PWD/$APP_DIR" ;; esac   # relative to where you ran it
+cd "$(dirname "$0")/.."
 VERSION="0.2.0"
 
 echo "Building Peel.app (release)…"

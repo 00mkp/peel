@@ -50,13 +50,44 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var results: [ResultRow] = []
     @Published public private(set) var tools: [ToolStatus] = []
     @Published public private(set) var homebrew: URL?
+    @Published public private(set) var launchAtLogin: Bool
+    /// Why the last Open at Login change failed, if it did.
+    @Published public private(set) var loginItemError: String?
 
     private let makeLocator: () -> ToolLocator
+    private let loginItem: LoginItem
     private var token: CancelToken?
 
-    public init(locator: @escaping () -> ToolLocator = { .standard }) {
+    public init(locator: @escaping () -> ToolLocator = { .standard }, loginItem: LoginItem = SystemLoginItem()) {
         makeLocator = locator
+        self.loginItem = loginItem
+        launchAtLogin = loginItem.isEnabled
         refreshTools()
+    }
+
+    public func setLaunchAtLogin(_ on: Bool) {
+        do {
+            try loginItem.setEnabled(on)
+            loginItemError = nil
+        } catch {
+            loginItemError = "Couldn't change Open at Login: " +
+                ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+        launchAtLogin = loginItem.isEnabled
+    }
+
+    public var availableEntries: [CatalogEntry] { entries.filter(\.isAvailable) }
+    public var unavailableEntries: [CatalogEntry] { entries.filter { !$0.isAvailable } }
+
+    /// "PDF", "HEIC", "TAR.GZ", "Folder" — what the file list shows next to each name.
+    public static func typeLabel(for url: URL) -> String {
+        var isFolder: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isFolder), isFolder.boolValue {
+            return "Folder"
+        }
+        if let format = FileFormat(url: url) { return format.fileExtension.uppercased() }
+        let ext = OutputPlanner.splitName(url.lastPathComponent).ext
+        return ext.isEmpty ? "File" : ext.uppercased()
     }
 
     /// Adding/removing files is ignored while a job runs (the job's files and Cancel stay on screen).
@@ -70,6 +101,7 @@ public final class AppModel: ObservableObject {
     public func remove(_ url: URL) {
         guard !isRunning else { return }
         files.removeAll { $0 == url }
+        results = []
         recompute()
     }
 
@@ -83,7 +115,7 @@ public final class AppModel: ObservableObject {
     public var selectedEntry: CatalogEntry? { entries.first { $0.kind == selection } }
 
     public var validationMessage: String? {
-        guard let kind = selection else { return nil }
+        guard let kind = selection, options.hasRequiredInput(for: kind) else { return nil }
         do {
             _ = try options.action(for: kind, files: files)
             return nil
@@ -93,7 +125,9 @@ public final class AppModel: ObservableObject {
     }
 
     public var canRun: Bool {
-        !isRunning && !files.isEmpty && selectedEntry?.isAvailable == true && validationMessage == nil
+        guard let kind = selection else { return false }
+        return !isRunning && !files.isEmpty && selectedEntry?.isAvailable == true
+            && options.hasRequiredInput(for: kind) && validationMessage == nil
     }
 
     public var installHelp: InstallHelp? {

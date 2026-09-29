@@ -28,6 +28,17 @@ public struct ActionOptions: Equatable, Sendable {
         (target == .png || target == .jpg) && files.contains { FileFormat(url: $0) == .pdf }
     }
 
+    /// Whether the fields this action needs have been filled in at all. Empty required fields keep
+    /// Run disabled without showing an error (nothing has been typed yet).
+    public func hasRequiredInput(for kind: ActionKind) -> Bool {
+        let filled = { (text: String) in !text.trimmingCharacters(in: .whitespaces).isEmpty }
+        switch kind {
+        case .pdfExtract, .pdfDelete: return filled(pages)
+        case .mediaTrim: return filled(from) || filled(to)   // once either is typed, show problems
+        default: return true
+        }
+    }
+
     public func action(for kind: ActionKind, files: [URL]) throws -> PeelAction {
         switch kind {
         case let .convert(target):

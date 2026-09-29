@@ -151,13 +151,42 @@ import TestSupport
             outcomes = ActionRunner().run(.convert(to: .png, options: ConvertOptions(dpi: 600)), on: [source], cancel: token)
             finished.signal()
         }
-        let first = dir.appendingPathComponent("big-p1.png")
+        // Pages are staged as hidden temps until the whole file is done; wait for the first one.
+        func staged() -> Int {
+            ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0.hasPrefix(".peel-") }.count
+        }
         let deadline = Date().addingTimeInterval(20)
-        while !FileManager.default.fileExists(atPath: first.path) && Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
+        while staged() == 0 && Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
         token.cancel()
         #expect(finished.wait(timeout: .now() + 20) == .success)
         #expect(outcomes.first?.isCancelled == true)
         let pages = try FileManager.default.contentsOfDirectory(atPath: dir.path).filter { $0.hasPrefix("big-p") }
         #expect(pages.isEmpty)
+        #expect(staged() == 0)
+    }
+
+    // Polish: with overwrite on, cancelling a PDF render keeps the files it would have replaced.
+    @Test func cancelWithOverwriteKeepsOldFiles() throws {
+        let source = try Fixtures.makePDF(at: dir.appendingPathComponent("big.pdf"), pages: 30)
+        let old = try Fixtures.writeText("old", to: dir.appendingPathComponent("big-p1.png"))
+        let token = CancelToken()
+        let finished = DispatchSemaphore(value: 0)
+        var outcomes: [ActionOutcome] = []
+        DispatchQueue.global().async {
+            outcomes = ActionRunner(planner: OutputPlanner(force: true))
+                .run(.convert(to: .png, options: ConvertOptions(dpi: 600)), on: [source], cancel: token)
+            finished.signal()
+        }
+        func staged() -> Int {
+            ((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []).filter { $0.hasPrefix(".peel-") }.count
+        }
+        let deadline = Date().addingTimeInterval(20)
+        while staged() == 0 && Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
+        Thread.sleep(forTimeInterval: 0.3)
+        token.cancel()
+        #expect(finished.wait(timeout: .now() + 20) == .success)
+        #expect(outcomes.first?.isCancelled == true)
+        #expect(try String(contentsOf: old, encoding: .utf8) == "old")
+        #expect(staged() == 0)
     }
 }

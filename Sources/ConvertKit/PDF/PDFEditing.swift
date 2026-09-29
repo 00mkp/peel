@@ -83,14 +83,23 @@ public enum PDFBackend {
         guard doc.pageCount > 0 else { throw PeelError.invalidArgument("\(input.lastPathComponent) has no pages") }
         let groups = try ranges?.groups(count: doc.pageCount) ?? (1...doc.pageCount).map { [$0] }
         var written: [URL] = []
-        for group in groups {
-            if isCancelled() {
-                written.forEach { try? FileManager.default.removeItem(at: $0) }
-                throw PeelError.cancelled
+        let batch = AtomicBatch()
+        do {
+            for group in groups {
+                if isCancelled() { throw PeelError.cancelled }
+                let url = output(group)
+                let part = document(from: doc, pages: group)
+                try withExtendedLifetime(doc) {
+                    try batch.write(to: url) { temp in
+                        guard part.write(to: temp) else { throw PeelError.writeFailed(url) }
+                    }
+                }
+                written.append(url)
             }
-            let url = output(group)
-            try withExtendedLifetime(doc) { try save(document(from: doc, pages: group), to: url) }
-            written.append(url)
+            try batch.commit()
+        } catch {
+            batch.discard()
+            throw error
         }
         return written
     }

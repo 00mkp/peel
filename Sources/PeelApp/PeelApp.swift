@@ -38,11 +38,13 @@ struct PeelApp: App {
                 .frame(minWidth: 520, minHeight: 560)
                 .onAppear { delegate.model = model }
         }
-        MenuBarExtra("Peel", systemImage: "doc.on.doc") {
+        MenuBarExtra {
             MainView(compact: true)
                 .environmentObject(model)
-                .frame(width: 380, height: 520)
+                .frame(width: 380, height: 540)
                 .onAppear { delegate.model = model }
+        } label: {
+            Image(nsImage: PeelIcon.menuBarImage())
         }
         .menuBarExtraStyle(.window)
         Settings {

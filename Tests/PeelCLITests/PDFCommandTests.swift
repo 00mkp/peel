@@ -90,4 +90,11 @@ import TestSupport
         #expect(Fixtures.pageTexts(URL(fileURLWithPath: b)).count == 3)
         #expect(Fixtures.pageTexts(URL(fileURLWithPath: path("b 2.pdf"))).count == 5)
     }
+
+    // Duplicate ranges without --force must keep both files (guards the staged-write change).
+    @Test func splitDuplicateRangesKeepsBoth() throws {
+        #expect(runPeel(["pdf", "split", try pdf("d.pdf"), "--pages", "1-2,1-2"]).code == 0)
+        #expect(FileManager.default.fileExists(atPath: path("d-p1-2.pdf")))
+        #expect(FileManager.default.fileExists(atPath: path("d-p1-2 2.pdf")))
+    }
 }

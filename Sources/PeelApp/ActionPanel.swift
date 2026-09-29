@@ -8,11 +8,18 @@ struct ActionPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Action", selection: $model.selection) {
-                ForEach(model.entries, id: \.kind) { entry in
-                    Text(entry.isAvailable
-                         ? entry.title
-                         : "\(entry.title) — needs \(entry.missing.map(\.tool.rawValue).joined(separator: ", "))")
-                        .tag(Optional(entry.kind))
+                ForEach(model.availableEntries, id: \.kind) { entry in
+                    Text(entry.title).tag(Optional(entry.kind))
+                }
+                if !model.unavailableEntries.isEmpty {
+                    // Kept selectable (choosing one shows how to install what it needs), but set apart.
+                    Section("Needs a tool that isn't installed") {
+                        ForEach(model.unavailableEntries, id: \.kind) { entry in
+                            Text("\(entry.title) — needs \(entry.missing.map(\.tool.rawValue).joined(separator: ", "))")
+                                .foregroundStyle(.secondary)
+                                .tag(Optional(entry.kind))
+                        }
+                    }
                 }
             }
             if let help = model.installHelp {
