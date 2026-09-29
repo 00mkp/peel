@@ -3,7 +3,8 @@ import Combine
 import PeelAppCore
 import SwiftUI
 
-/// The menu-bar icon and its panel. Files dropped on the icon open the panel with them loaded.
+/// The menu-bar icon and its panel. Clicking the icon toggles the panel. (Dropping onto the icon was
+/// removed: dragging to the top of the screen brings up Stage Manager; Shift-drag covers that need.)
 @MainActor
 final class StatusController: NSObject, NSPopoverDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -29,14 +30,6 @@ final class StatusController: NSObject, NSPopoverDelegate {
             button.target = self                        // VoiceOver / keyboard menu-bar navigation
             button.action = #selector(buttonPressed)
             button.setAccessibilityLabel("Peel")
-            let drop = StatusDropView(frame: button.bounds)
-            drop.autoresizingMask = [.width, .height]
-            drop.onClick = { [weak self] in self?.toggle() }
-            drop.onDrop = { [weak self] urls in
-                self?.model.add(urls)
-                self?.show()
-            }
-            button.addSubview(drop)
         }
         pinWatch = model.$panelPinned.sink { [weak self] pinned in
             self?.popover.behavior = pinned ? .applicationDefined : .transient
@@ -93,39 +86,5 @@ final class StatusController: NSObject, NSPopoverDelegate {
             fallback = panel
         }
         fallback?.makeKeyAndOrderFront(nil)
-    }
-}
-
-/// Transparent layer over the status button: accepts file drops and passes clicks through.
-final class StatusDropView: NSView {
-    var onDrop: ([URL]) -> Void = { _ in }
-    var onClick: () -> Void = {}
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        registerForDraggedTypes([.fileURL])
-    }
-
-    required init?(coder: NSCoder) { nil }
-
-    override func mouseDown(with event: NSEvent) { onClick() }
-    override func rightMouseDown(with event: NSEvent) { onClick() }
-
-    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        (superview as? NSButton)?.highlight(true)
-        return .copy
-    }
-
-    override func draggingExited(_ sender: NSDraggingInfo?) {
-        (superview as? NSButton)?.highlight(false)
-    }
-
-    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        (superview as? NSButton)?.highlight(false)
-        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self],
-                                                         options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
-        guard !urls.isEmpty else { return false }
-        onDrop(urls)
-        return true
     }
 }

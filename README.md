@@ -86,8 +86,9 @@ window and no Dock icon.
   wheel of quick actions appears at the cursor (Merge, Split, → JPG, Compress, GIF, Extract, Zip…,
   depending on the files). Drop on one to run it; a notification tells you the result. Drop on
   **More…** to open the files in the menu-bar panel instead.
-- **Menu-bar panel:** click the icon, or drop files onto it. Pick an action, set options (pages,
-  sizes, formats…), press Run. The **pin** keeps the panel open while you drag files in from Finder.
+- **Menu-bar panel:** click the icon, then drop files into the panel (or use **Choose Files…**). Pick
+  an action, set options (pages, sizes, formats…), press Run. The **pin** keeps the panel open while
+  you drag files in from Finder.
 - The **gear** has **Settings…** (optional tools, **Open at Login**) and **Quit Peel**.
 - "Open With → Peel" or opening Peel again also opens the panel.
 - The first time, macOS may ask to allow Peel's notifications and, for the wheel, to let Peel read
