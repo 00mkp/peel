@@ -3,17 +3,18 @@ import PeelAppCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The action wheel: translucent round chips on a frosted disc (so it's clear where Peel's wheel starts
-/// and ends), with a small "More" hub in the middle. The chip under a dragged file fills with the Mac's
-/// accent colour.
+/// The action wheel: a Liquid Glass disc (following the system's glass setting on macOS 26+) with the
+/// actions around a small "More" hub. At rest the actions are just icon + label; the one under a dragged
+/// file gets an accent-tinted glass highlight.
 struct WheelView: View {
     let slots: [WheelSlot]
     let onDrop: (WheelSlot?, [URL]) -> Void   // nil slot = More…
     /// Developer aid for previews: show this slot as hovered (-1 = the hub).
     var previewHovered: Int? = nil
 
-    static let size: CGFloat = 290
-    private static let ring: CGFloat = 96
+    static let size: CGFloat = 212
+    /// Distance from the centre to each chip: as tight as six 58-pt chips around a 58-pt hub allow.
+    private static let ring: CGFloat = 66
     @State private var hovered: Int?          // slot index under the drag; -1 = the hub
 
     private var lit: Int? { hovered ?? previewHovered }
@@ -23,17 +24,15 @@ struct WheelView: View {
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(.regularMaterial)
-                .overlay(Circle().strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5))
-                .shadow(color: .black.opacity(0.25), radius: 14, y: 6)
-                .padding(4)
+            Color.clear
+                .frame(width: Self.size - 8, height: Self.size - 8)
+                .peelGlass(Circle())
             ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
-                ChipView(title: slot.label, systemImage: slot.systemImage, size: 66, lit: lit == index,
+                ChipView(title: slot.label, systemImage: slot.systemImage, size: 58, lit: lit == index,
                          onTargeted: { setHovered(index, $0) }) { urls in onDrop(slot, urls) }
                     .offset(x: cos(radians(index)) * Self.ring, y: sin(radians(index)) * Self.ring)
             }
-            ChipView(title: nil, systemImage: "ellipsis", size: 50, lit: lit == -1,
+            ChipView(title: "More", systemImage: "ellipsis", size: 58, lit: lit == -1,
                      onTargeted: { setHovered(-1, $0) }) { urls in onDrop(nil, urls) }
                 .help("More… — open these files in the Peel panel")
         }
@@ -46,7 +45,7 @@ struct WheelView: View {
     }
 }
 
-/// One round chip; a drop target.
+/// One action; a drop target. Plain icon + label at rest, accent glass when a file hovers over it.
 private struct ChipView: View {
     let title: String?
     let systemImage: String
@@ -57,16 +56,20 @@ private struct ChipView: View {
     @State private var targeted = false
 
     var body: some View {
-        VStack(spacing: 3) {
-            Image(systemName: systemImage).font(.system(size: title == nil ? 15 : 17, weight: .medium))
+        VStack(spacing: 2) {
+            Image(systemName: systemImage).font(.system(size: title == nil ? 13 : 17, weight: .medium))
             if let title {
-                Text(title).font(.system(size: 10.5, weight: .medium)).lineLimit(1).minimumScaleFactor(0.7)
+                Text(title).font(.system(size: 10, weight: .medium)).lineLimit(1).minimumScaleFactor(0.7)
             }
         }
         .frame(width: size, height: size)
-        .foregroundStyle(lit ? Color.white : Color.primary.opacity(title == nil ? 0.7 : 0.9))
-        .background(Circle().fill(lit ? Color.accentColor : Color.primary.opacity(0.07)))
-        .overlay(Circle().strokeBorder(Color.primary.opacity(lit ? 0 : 0.12), lineWidth: 0.5))
+        .foregroundStyle(lit ? AnyShapeStyle(Color.white) : AnyShapeStyle(.primary))
+        .background {
+            // Each action sits in its own frosted circle, a step more opaque than the glass disc, so the
+            // targets (and the space between them) read clearly; the hovered one fills with the accent.
+            Circle().fill(lit ? AnyShapeStyle(Color.accentColor.opacity(0.9)) : AnyShapeStyle(.primary.opacity(0.12)))
+                .overlay(Circle().strokeBorder(.primary.opacity(lit ? 0 : 0.2), lineWidth: 0.5))
+        }
         .contentShape(Circle())
         .onChange(of: targeted) { onTargeted($0) }
         .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
@@ -81,6 +84,19 @@ private struct ChipView: View {
             }
             group.notify(queue: .main) { onDrop(collected.urls) }
             return true
+        }
+    }
+}
+
+extension View {
+    /// Liquid Glass on macOS 26+ (follows the user's glass and transparency settings), otherwise the
+    /// closest older material.
+    @ViewBuilder func peelGlass<S: Shape>(_ shape: S) -> some View {
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.regular, in: shape)
+        } else {
+            self.background(shape.fill(.ultraThinMaterial))
+                .overlay(shape.stroke(Color.primary.opacity(0.12), lineWidth: 0.5))
         }
     }
 }
