@@ -6,10 +6,10 @@ public struct Peel: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "peel",
         abstract: "Convert and edit images, PDFs, audio/video, subtitles and archives — all locally.",
-        version: "0.2.0",
+        version: PeelVersion.current,
         subcommands: [Convert.self, PDFCommand.self, MediaCommand.self, ExtractCommand.self, ZipCommand.self,
                       Formats.self, Doctor.self, InstallQuickActions.self, UninstallQuickActions.self,
-                      QuickActionCommand.self])
+                      QuickActionCommand.self, Status.self, Update.self, Uninstall.self, AppCommand.self])
 
     public init() {}
 

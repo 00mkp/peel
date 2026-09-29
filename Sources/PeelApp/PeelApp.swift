@@ -1,12 +1,14 @@
 import AppKit
+import ConvertKit
 import PeelAppCore
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    @MainActor let model = AppModel()
+    @MainActor let model = AppModel(stateFile: PeelSupport.appState())
     @MainActor private(set) var status: StatusController!
     @MainActor private(set) var wheel: WheelController!
     private var pendingURLs: [URL] = []
+    private var showPanelAtLaunch = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
@@ -18,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.wheel.previewIfRequested()
             Notifier.shared.onOpen = { [weak self] in self?.status.show() }
             Notifier.shared.activate()
-            if !self.pendingURLs.isEmpty {
+            if !self.pendingURLs.isEmpty || self.showPanelAtLaunch {
                 self.model.add(self.pendingURLs)
                 self.pendingURLs = []
                 self.status.show()
@@ -26,11 +28,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// "Open With" / files dropped on Peel in Finder: load them into the panel.
+    /// "Open With" / files dropped on Peel in Finder: load them into the panel. `peel://` URLs are
+    /// commands from the CLI (`peel app login on|off`, `peel app panel`).
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
-            guard let status = self.status else { self.pendingURLs += urls; return }
-            self.model.add(urls)
+            for url in urls {
+                switch PeelURLCommand(url: url) {
+                case let .login(on)?: self.model.setLaunchAtLogin(on)
+                case .panel?: if let status = self.status { status.show() } else { self.showPanelAtLaunch = true }
+                case nil: break
+                }
+            }
+            let files = urls.filter(\.isFileURL)
+            guard !files.isEmpty else { return }
+            guard let status = self.status else { self.pendingURLs += files; return }
+            self.model.add(files)
             status.show()
         }
     }

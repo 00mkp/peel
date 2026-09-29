@@ -92,6 +92,22 @@ peel formats photo.heic                           # what can this become?
 peel doctor
 ```
 
+## Managing peel
+
+```
+peel status                 version, install source, Quick Actions, app, Open at Login, tools
+peel update                 pull the latest source, rebuild, reinstall (CLI, Quick Actions, app)
+peel update <dir|archive>   update from a directory or .tar.gz/.tgz/.zip instead
+peel uninstall              remove the app (and its login item), Quick Actions, the CLI and settings
+peel app start|stop         launch or quit the menu-bar app
+peel app panel              open the menu-bar panel
+peel app login on|off       Open at Login
+```
+
+Cloning is worth preferring over an archive: `install.sh` records where it ran from, so a clone
+gives you a working `peel update` afterwards. Everything the app does is also a `peel` command — the
+app and the CLI share the same engine.
+
 ## Finder Quick Actions
 
 `./install.sh` adds these to Finder's right-click menu (Quick Actions / Services):

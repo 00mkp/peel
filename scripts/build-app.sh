@@ -5,7 +5,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-$HOME/Applications}"
 case "$APP_DIR" in /*) ;; *) APP_DIR="$PWD/$APP_DIR" ;; esac   # relative to where you ran it
 cd "$(dirname "$0")/.."
-VERSION="0.2.0"
+VERSION="$(tr -d '[:space:]' < VERSION)"
 
 echo "Building Peel.app (release)…"
 swift build -c release --product PeelApp
@@ -35,6 +35,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>dev.peel.app.commands</string>
+      <key>CFBundleURLSchemes</key><array><string>peel</string></array>
+    </dict>
+  </array>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
