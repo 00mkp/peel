@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 
 struct MainView: View {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.openWindow) private var openWindow
+    @Environment(\.peelActions) private var actions
     var compact = false
     @State private var targeted = false
 
@@ -15,7 +15,16 @@ struct MainView: View {
                 HStack {
                     Text("Peel").font(.headline)
                     Spacer()
-                    Button("Open Window") { openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true) }
+                    Button("Open Window") { actions.openWindow() }
+                    Menu {
+                        Button("Settings…") { actions.openSettings() }
+                        Divider()
+                        Button("Quit Peel") { NSApp.terminate(nil) }
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
                 LoginToggle()
             }

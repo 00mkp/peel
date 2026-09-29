@@ -2,62 +2,126 @@ import AppKit
 import PeelAppCore
 import SwiftUI
 
-/// Receives files dropped on the Dock icon / "Open With", and re-checks tools on activation.
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var pending: [URL] = []
+/// Peel lives in the menu bar. Its windows (main, Settings) are optional and open on demand; the Dock
+/// icon shows only while one of them is open.
+@MainActor
+final class WindowPresenter: NSObject, NSWindowDelegate {
+    private var window: NSWindow?
+    private let title: String
+    private let makeContent: () -> AnyView
 
-    @MainActor var model: AppModel? {
-        didSet {
-            guard let model, !pending.isEmpty else { return }
-            model.add(pending)
-            pending = []
+    init(title: String, content: @escaping () -> AnyView) {
+        self.title = title
+        makeContent = content
+    }
+
+    func show() {
+        if window == nil {
+            let host = NSHostingController(rootView: makeContent())
+            host.sizingOptions = [.preferredContentSize]   // the window follows the content's size
+            let window = NSWindow(contentViewController: host)
+            window.title = title
+            window.styleMask = [.titled, .closable, .miniaturizable]
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.center()
+            self.window = window
+        }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        let closing = notification.object as? NSWindow
+        let othersOpen = NSApp.windows.contains {
+            $0 !== closing && $0.isVisible && $0.styleMask.contains(.titled) && $0.delegate is WindowPresenter
+        }
+        if !othersOpen { NSApp.setActivationPolicy(.accessory) }   // back to menu-bar only
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    @MainActor let model = AppModel()
+    @MainActor lazy var mainWindow = WindowPresenter(title: "Peel") { [unowned self] in
+        AnyView(MainView().environmentObject(self.model).environment(\.peelActions, self.actions).frame(width: 540))
+    }
+    @MainActor lazy var settingsWindow = WindowPresenter(title: "Peel Settings") { [unowned self] in
+        AnyView(ToolsView().environmentObject(self.model).frame(width: 480).padding())
+    }
+    @MainActor var actions: PeelActions {
+        PeelActions(openWindow: { [unowned self] in self.mainWindow.show() },
+                    openSettings: { [unowned self] in self.settingsWindow.show() })
+    }
+
+    private static let launchedBeforeKey = "hasLaunchedBefore"
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { @MainActor in
+            NSApp.setActivationPolicy(.accessory)
+            // First launch ever: show the window once so a fresh install doesn't look like nothing happened.
+            if !UserDefaults.standard.bool(forKey: Self.launchedBeforeKey) {
+                UserDefaults.standard.set(true, forKey: Self.launchedBeforeKey)
+                self.mainWindow.show()
+            }
         }
     }
 
+    /// Files dropped on Peel / "Open With": add them and show the window.
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
-            if let model = self.model { model.add(urls) } else { self.pending += urls }
-            NSApp.activate(ignoringOtherApps: true)
+            self.model.add(urls)
+            self.mainWindow.show()
         }
     }
+
+    /// Opening Peel again (Finder, Spotlight, Launchpad) while it runs brings up the window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        Task { @MainActor in self.mainWindow.show() }
+        return true
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         Task { @MainActor in
-            self.model?.refreshTools()
-            self.model?.refreshLoginItem()
+            self.model.refreshTools()
+            self.model.refreshLoginItem()
         }
+    }
+}
+
+/// App-level actions the views can trigger (open the optional windows).
+struct PeelActions {
+    var openWindow: () -> Void = {}
+    var openSettings: () -> Void = {}
+}
+
+private struct PeelActionsKey: EnvironmentKey {
+    static let defaultValue = PeelActions()
+}
+
+extension EnvironmentValues {
+    var peelActions: PeelActions {
+        get { self[PeelActionsKey.self] }
+        set { self[PeelActionsKey.self] = newValue }
     }
 }
 
 @main
 struct PeelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @StateObject private var model = AppModel()
 
     var body: some Scene {
-        Window("Peel", id: "main") {
-            MainView()
-                .environmentObject(model)
-                .frame(width: 540)
-                .onAppear { delegate.model = model }
-        }
-        // The window grows with its content: just the drop area at first, then files, options, results.
-        .windowResizability(.contentSize)
         MenuBarExtra {
             MainView(compact: true)
-                .environmentObject(model)
+                .environmentObject(delegate.model)
+                .environment(\.peelActions, delegate.actions)
                 .frame(width: 380)
-                .onAppear { delegate.model = model }
         } label: {
             Image(nsImage: PeelIcon.menuBarImage())
         }
         .menuBarExtraStyle(.window)
-        Settings {
-            ToolsView()
-                .environmentObject(model)
-                .frame(width: 480)
-                .padding()
-        }
     }
 }
 
