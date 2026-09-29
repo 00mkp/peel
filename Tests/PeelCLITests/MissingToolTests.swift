@@ -32,6 +32,7 @@ import TestSupport
         let result = try peel(["media", "gif", clip.path])
         #expect(result.code == 1)
         #expect(result.err.contains("brew install ffmpeg"))
+        #expect(result.err.contains("video/audio conversion"))  // what the tool adds (checkpoint A I2)
     }
 
     @Test func rarWithoutUnar() throws {

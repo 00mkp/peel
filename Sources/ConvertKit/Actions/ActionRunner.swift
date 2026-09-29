@@ -92,7 +92,7 @@ public struct ActionRunner {
         case let .pdfSplit(ranges):
             return eachFile(files, cancel: cancel) { file, protected in
                 var written: [URL] = []
-                let outputs = try PDFBackend.split(file, ranges: ranges) { group in
+                let outputs = try PDFBackend.split(file, ranges: ranges, isCancelled: { cancel.isCancelled }) { group in
                     let out = planner.plan(input: file, suffix: "-" + PDFBackend.pageLabel(for: group), ext: "pdf",
                                            protecting: protected + written)
                     written.append(out)
@@ -141,8 +141,8 @@ public struct ActionRunner {
                 }
             }
         case .extract:
-            return eachFile(files, cancel: cancel) { file, _ in
-                [try ArchiveBackend.extract(file, planner: planner, locator: locator)]
+            return eachFile(files, cancel: cancel) { file, protected in
+                [try ArchiveBackend.extract(file, planner: planner, locator: locator, protecting: protected)]
             }
         }
     }

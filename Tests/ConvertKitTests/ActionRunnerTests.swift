@@ -123,4 +123,41 @@ import TestSupport
         #expect(outcomes.first?.isCancelled == true)
         #expect(partials().isEmpty)
     }
+
+    // Checkpoint A C1: extracting x.gz next to an input named x must not overwrite that input.
+    @Test func extractNeverOverwritesAnotherInput() throws {
+        let folder = dir.appendingPathComponent("stuff")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Fixtures.writeText("hi", to: folder.appendingPathComponent("a.txt"))
+        let zip = dir.appendingPathComponent("data.zip")
+        try ArchiveBackend.create([folder], at: zip)
+        let before = try Data(contentsOf: zip)
+        let inner = try Fixtures.tempDir().appendingPathComponent("data.zip")
+        try Fixtures.writeText("CLOBBER", to: inner)
+        let gz = dir.appendingPathComponent("data.zip.gz")
+        try ProcessRunner.runChecked(URL(fileURLWithPath: "/usr/bin/gzip"), ["-c", inner.path], stdoutTo: gz)
+        let outcomes = ActionRunner(planner: OutputPlanner(force: true)).run(.extract, on: [gz, zip])
+        #expect(try Data(contentsOf: zip) == before)
+        #expect(outcomes.allSatisfy { (try? $0.result.get()) != nil })
+    }
+
+    // Checkpoint A I1: Cancel interrupts a long single PDF render and removes the pages written so far.
+    @Test func cancelDuringALongPDFRender() throws {
+        let source = try Fixtures.makePDF(at: dir.appendingPathComponent("big.pdf"), pages: 30)
+        let token = CancelToken()
+        let finished = DispatchSemaphore(value: 0)
+        var outcomes: [ActionOutcome] = []
+        DispatchQueue.global().async {
+            outcomes = ActionRunner().run(.convert(to: .png, options: ConvertOptions(dpi: 600)), on: [source], cancel: token)
+            finished.signal()
+        }
+        let first = dir.appendingPathComponent("big-p1.png")
+        let deadline = Date().addingTimeInterval(20)
+        while !FileManager.default.fileExists(atPath: first.path) && Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
+        token.cancel()
+        #expect(finished.wait(timeout: .now() + 20) == .success)
+        #expect(outcomes.first?.isCancelled == true)
+        let pages = try FileManager.default.contentsOfDirectory(atPath: dir.path).filter { $0.hasPrefix("big-p") }
+        #expect(pages.isEmpty)
+    }
 }

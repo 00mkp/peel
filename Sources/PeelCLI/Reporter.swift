@@ -21,8 +21,9 @@ final class Reporter {
         failed += 1
         let message = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
         Console.err(input.map { "✗ \($0.lastPathComponent): \(message)" } ?? "✗ \(message)")
-        if let peelError = error as? PeelError, case .missingTool = peelError, ToolLocator.standard.homebrew == nil {
-            Console.err("  " + ToolLocator.homebrewMissingNote)
+        if let peelError = error as? PeelError, case let .missingTool(name, _) = peelError {
+            if let tool = Tool(rawValue: name) { Console.err("  \(name) adds \(tool.enables)") }
+            if ToolLocator.standard.homebrew == nil { Console.err("  " + ToolLocator.homebrewMissingNote) }
         }
         if verbose, let peelError = error as? PeelError,
            case let .toolFailed(_, _, _, details) = peelError, !details.isEmpty {

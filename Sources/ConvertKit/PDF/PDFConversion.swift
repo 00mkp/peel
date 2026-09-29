@@ -31,7 +31,8 @@ extension PDFBackend {
     }
 
     /// Renders each page to PNG or JPEG. `output` names the file for a 1-based page number.
-    public static func toImages(_ input: URL, format: FileFormat, dpi: Int,
+    /// Stops (removing the pages it wrote) as soon as `isCancelled` returns true.
+    public static func toImages(_ input: URL, format: FileFormat, dpi: Int, isCancelled: () -> Bool = { false },
                                 output: (_ page: Int) -> URL) throws -> [URL] {
         guard format == .png || format == .jpg, let type = format.imageUTType else {
             throw PeelError.unsupportedConversion(from: "pdf", to: format.rawValue)
@@ -39,6 +40,10 @@ extension PDFBackend {
         let doc = try open(input)
         var written: [URL] = []
         for index in 0..<doc.pageCount {
+            if isCancelled() {
+                written.forEach { try? FileManager.default.removeItem(at: $0) }
+                throw PeelError.cancelled
+            }
             guard let page = doc.page(at: index) else { continue }
             let image = try render(page, dpi: dpi)
             let url = output(index + 1)

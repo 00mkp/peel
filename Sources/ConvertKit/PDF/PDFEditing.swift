@@ -76,12 +76,18 @@ public enum PDFBackend {
     }
 
     /// One file per group. `ranges == nil` → one file per page. `output` names each file.
-    public static func split(_ input: URL, ranges: PageRange?, output: (_ group: [Int]) -> URL) throws -> [URL] {
+    /// Stops (removing what it wrote) as soon as `isCancelled` returns true.
+    public static func split(_ input: URL, ranges: PageRange?, isCancelled: () -> Bool = { false },
+                             output: (_ group: [Int]) -> URL) throws -> [URL] {
         let doc = try open(input)
         guard doc.pageCount > 0 else { throw PeelError.invalidArgument("\(input.lastPathComponent) has no pages") }
         let groups = try ranges?.groups(count: doc.pageCount) ?? (1...doc.pageCount).map { [$0] }
         var written: [URL] = []
         for group in groups {
+            if isCancelled() {
+                written.forEach { try? FileManager.default.removeItem(at: $0) }
+                throw PeelError.cancelled
+            }
             let url = output(group)
             try withExtendedLifetime(doc) { try save(document(from: doc, pages: group), to: url) }
             written.append(url)

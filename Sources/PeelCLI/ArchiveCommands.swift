@@ -16,9 +16,14 @@ struct ExtractCommand: ParsableCommand {
 
     func run() throws {
         let reporter = Reporter(verbose: options.verbose)
-        for archive in archives.map(Paths.url) {
+        let inputs = archives.map(Paths.url)
+        var produced: [URL] = []
+        for archive in inputs {
             do {
-                let created = try ArchiveBackend.extract(archive, into: options.outputDirectoryURL, planner: options.planner)
+                // Never overwrite another archive in the selection or an earlier result.
+                let created = try ArchiveBackend.extract(archive, into: options.outputDirectoryURL, planner: options.planner,
+                                                         protecting: inputs + produced)
+                produced.append(created)
                 reporter.record(archive, outputs: [created])
             } catch {
                 reporter.failure(archive, error)

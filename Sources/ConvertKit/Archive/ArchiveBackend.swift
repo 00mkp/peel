@@ -9,8 +9,9 @@ public enum ArchiveBackend {
     /// Extracts into a new folder named after the archive, inside `directory` (default: next to the archive).
     /// A plain `.gz` becomes a single file instead. Returns what was created.
     @discardableResult
+    /// `protecting` lists other files (e.g. the rest of a selection) that must never be overwritten.
     public static func extract(_ archive: URL, into directory: URL? = nil, planner: OutputPlanner = OutputPlanner(),
-                               locator: ToolLocator = .standard) throws -> URL {
+                               locator: ToolLocator = .standard, protecting: [URL] = []) throws -> URL {
         guard FileManager.default.fileExists(atPath: archive.path) else { throw PeelError.fileNotFound(archive) }
         guard let format = FileFormat(url: archive), format.category == .archive else {
             throw PeelError.invalidArgument(
@@ -20,7 +21,7 @@ public enum ArchiveBackend {
         let base = OutputPlanner.splitName(archive.lastPathComponent).base
 
         if format == .gz {
-            let out = planner.resolve(parent.appendingPathComponent(base), avoiding: [archive])
+            let out = planner.resolve(parent.appendingPathComponent(base), avoiding: [archive] + protecting)
             try AtomicOutput.write(to: out) { temp in
                 try ProcessRunner.runChecked(gzip, ["-dc", archive.path], stdoutTo: temp)
             }
@@ -54,7 +55,7 @@ public enum ArchiveBackend {
         let name = lone ? entries[0].lastPathComponent : base
         // Folders are never replaced, even with --force: that would delete files that aren't in the archive.
         let destination = OutputPlanner(force: false)
-            .resolve(parent.appendingPathComponent(name, isDirectory: true), avoiding: [archive])
+            .resolve(parent.appendingPathComponent(name, isDirectory: true), avoiding: [archive] + protecting)
         try fm.moveItem(at: result, to: destination)
         return destination
     }

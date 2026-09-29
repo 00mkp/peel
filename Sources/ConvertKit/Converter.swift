@@ -39,7 +39,8 @@ public struct Converter {
         return inputs.map { input in
             if isCancelled() { return ConvertOutcome(input: input, result: .failure(PeelError.cancelled)) }
             let result = Result {
-                try convertOne(input, to: target, options: options, output: perFileOutput, protecting: inputs + produced)
+                try convertOne(input, to: target, options: options, output: perFileOutput, protecting: inputs + produced,
+                               isCancelled: isCancelled)
             }.mapError { error -> Error in isCancelled() ? PeelError.cancelled : error }
             produced += (try? result.get()) ?? []
             return ConvertOutcome(input: input, result: result)
@@ -69,7 +70,7 @@ public struct Converter {
     }
 
     private func convertOne(_ input: URL, to target: FileFormat, options: ConvertOptions, output: URL?,
-                            protecting: [URL]) throws -> [URL] {
+                            protecting: [URL], isCancelled: () -> Bool) throws -> [URL] {
         let (source, conversion) = try check(input, to: target)
         let ext = target.fileExtension
         func single(_ write: (URL) throws -> Void) throws -> [URL] {
@@ -82,7 +83,7 @@ public struct Converter {
             return try single { try PDFBackend.text(input, to: $0) }
         case (.pdf, .pdf, _):
             let folder = output.map(Self.asDirectory)
-            return try PDFBackend.toImages(input, format: target, dpi: options.dpi) { page in
+            return try PDFBackend.toImages(input, format: target, dpi: options.dpi, isCancelled: isCancelled) { page in
                 planner.plan(input: input, suffix: "-p\(page)", ext: ext, output: folder, protecting: protecting)
             }
         case (.pdf, .txt, _):

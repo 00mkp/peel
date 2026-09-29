@@ -1,3 +1,4 @@
+import ConvertKit
 import Foundation
 import Testing
 @testable import PeelCLI
@@ -37,5 +38,17 @@ import TestSupport
         #expect(runPeel(["zip", old.path, notes.path, "-o", old.path, "--force"]).code == 0)
         #expect(try String(contentsOf: old, encoding: .utf8) == "precious")
         #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("old 2.zip").path))
+    }
+
+    // Checkpoint A C1 (CLI path): `peel x --force x.gz x` must not overwrite the input x.
+    @Test func forceExtractNeverOverwritesAnotherInput() throws {
+        let dir = try Fixtures.tempDir()
+        let zip = try Fixtures.writeText("precious", to: dir.appendingPathComponent("data.zip"))
+        let inner = try Fixtures.tempDir().appendingPathComponent("data.zip")
+        try Fixtures.writeText("CLOBBER", to: inner)
+        let gz = dir.appendingPathComponent("data.zip.gz")
+        try ProcessRunner.runChecked(URL(fileURLWithPath: "/usr/bin/gzip"), ["-c", inner.path], stdoutTo: gz)
+        _ = runPeel(["x", "--force", gz.path, zip.path])
+        #expect(try String(contentsOf: zip, encoding: .utf8) == "precious")
     }
 }
