@@ -59,14 +59,15 @@ final class WheelController {
     func previewIfRequested() {
         guard let list = ProcessInfo.processInfo.environment["PEEL_PREVIEW_WHEEL"], let screen = NSScreen.main else { return }
         let files = list.split(separator: ":").map { URL(fileURLWithPath: String($0)) }
-        show(at: NSPoint(x: screen.frame.midX, y: screen.frame.midY), files: files)
+        let hovered = ProcessInfo.processInfo.environment["PEEL_PREVIEW_HOVER"].flatMap { Int($0) }
+        show(at: NSPoint(x: screen.frame.midX, y: screen.frame.midY), files: files, previewHovered: hovered)
     }
 
-    private func show(at point: NSPoint, files: [URL]) {
+    private func show(at point: NSPoint, files: [URL], previewHovered: Int? = nil) {
         hideWork?.cancel()
-        let view = WheelView(slots: WheelMenu.slots(for: files)) { [weak self] slot, urls in
+        let view = WheelView(slots: WheelMenu.slots(for: files), onDrop: { [weak self] slot, urls in
             self?.handleDrop(slot: slot, urls: urls.isEmpty ? files : urls)
-        }
+        }, previewHovered: previewHovered)
         let size = WheelView.size
         var frame = NSRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
         // Keep the whole wheel on the screen the cursor is on.
