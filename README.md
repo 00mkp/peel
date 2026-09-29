@@ -101,6 +101,8 @@ window and no Dock icon.
 - Existing files are never overwritten: you get `name 2.ext`. `--force` overwrites, but never an input.
 - Batches keep going when one file fails; the exit code is `1` if anything failed, `2` for usage errors.
 - Page ranges: `3`, `1-3,5`, `8-` (to the end), `5-3` (backwards).
+- PDF bookmarks carry over: merged files get one bookmark per original file (with its own bookmarks
+  inside), and split/extract/reorder keep the bookmarks for the pages they keep.
 - Ctrl-C stops cleanly and leaves no half-written files.
 - Set PEEL_TOOL_PATH (colon-separated folders) to control where peel looks for optional tools.
 

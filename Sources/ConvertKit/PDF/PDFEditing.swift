@@ -32,7 +32,9 @@ public enum PDFBackend {
 
     /// Copies pages into a new document and re-points internal links at the copies.
     /// Links to pages that weren't copied are removed (they'd otherwise jump to page 1).
-    static func assemble(_ parts: [(document: PDFDocument, pages: [Int])]) -> PDFDocument {
+    /// Bookmarks are carried over the same way (see `copyOutline`); `perFileBookmarks` (merge) adds
+    /// one top-level bookmark per source file, with that file's own bookmarks inside it.
+    static func assemble(_ parts: [(document: PDFDocument, pages: [Int])], perFileBookmarks: Bool = false) -> PDFDocument {
         let result = PDFDocument()
         var firstCopy: [ObjectIdentifier: PDFPage] = [:]
         // Each copy with its links' target pages, read from the original: PDFKit resolves destinations
@@ -61,7 +63,45 @@ public enum PDFBackend {
                 link.action = PDFActionGoTo(destination: PDFDestination(page: copy, at: destination.point))
             }
         }
+        copyOutline(parts, firstCopy: firstCopy, into: result, perFile: perFileBookmarks)
         return result
+    }
+
+    /// Rebuilds the bookmarks for the copied pages: each keeps its label and points at the copy of its
+    /// page; bookmarks whose page wasn't copied are dropped (their children are kept if any survive).
+    private static func copyOutline(_ parts: [(document: PDFDocument, pages: [Int])],
+                                    firstCopy: [ObjectIdentifier: PDFPage], into result: PDFDocument, perFile: Bool) {
+        func topOf(_ page: PDFPage) -> CGPoint { CGPoint(x: 0, y: page.bounds(for: .cropBox).maxY) }
+        func copies(of node: PDFOutline) -> [PDFOutline] {
+            (0..<node.numberOfChildren).compactMap { node.child(at: $0) }.compactMap { child in
+                let children = copies(of: child)
+                let destination = child.destination ?? (child.action as? PDFActionGoTo)?.destination
+                let target = destination?.page.flatMap { firstCopy[ObjectIdentifier($0)] }
+                guard target != nil || !children.isEmpty else { return nil }
+                let copy = PDFOutline()
+                copy.label = child.label
+                if let target, let destination { copy.destination = PDFDestination(page: target, at: destination.point) }
+                for (index, grandchild) in children.enumerated() { copy.insertChild(grandchild, at: index) }
+                return copy
+            }
+        }
+        let root = PDFOutline()
+        for part in parts {
+            let own = part.document.outlineRoot.map(copies(of:)) ?? []
+            if perFile {
+                let node = PDFOutline()
+                node.label = part.document.documentURL?.deletingPathExtension().lastPathComponent ?? "Document"
+                if let first = part.pages.first, let original = part.document.page(at: first - 1),
+                   let copy = firstCopy[ObjectIdentifier(original)] {
+                    node.destination = PDFDestination(page: copy, at: topOf(copy))
+                }
+                for (index, child) in own.enumerated() { node.insertChild(child, at: index) }
+                root.insertChild(node, at: root.numberOfChildren)
+            } else {
+                for child in own { root.insertChild(child, at: root.numberOfChildren) }
+            }
+        }
+        if root.numberOfChildren > 0 { result.outlineRoot = root }
     }
 
     /// The in-document destination of a link annotation, if it has one.
@@ -79,7 +119,7 @@ public enum PDFBackend {
     public static func merge(_ inputs: [URL], to output: URL) throws {
         guard inputs.count >= 2 else { throw PeelError.invalidArgument("merge needs at least 2 PDFs") }
         let sources = try inputs.map { try Self.open($0) }
-        let result = assemble(sources.map { ($0, Array(0..<$0.pageCount).map { $0 + 1 }) })
+        let result = assemble(sources.map { ($0, Array(0..<$0.pageCount).map { $0 + 1 }) }, perFileBookmarks: true)
         try withExtendedLifetime(sources) { try save(result, to: output) }
     }
 

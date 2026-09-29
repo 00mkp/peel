@@ -198,3 +198,56 @@ extension Fixtures {
     public static let qpdf = URL(fileURLWithPath: "/opt/homebrew/bin/qpdf")
     public static var hasQPDF: Bool { FileManager.default.isExecutableFile(atPath: qpdf.path) }
 }
+
+extension Fixtures {
+    /// Hand-written PDF with `pages` pages and top-level bookmarks (label, 0-based page).
+    /// (Raw objects: PDFKit doesn't reliably save outlines that a test builds in memory.)
+    @discardableResult
+    public static func makePDFWithBookmarks(at url: URL, pages: Int, bookmarks: [(String, Int)]) throws -> URL {
+        // 1 catalog, 2 pages tree, 3..<3+pages the pages, then the outline root and its items.
+        let pageIDs = (0..<pages).map { 3 + $0 }
+        let outlineID = 3 + pages
+        let itemIDs = bookmarks.indices.map { outlineID + 1 + $0 }
+        var objects = [
+            "<< /Type /Catalog /Pages 2 0 R /Outlines \(outlineID) 0 R >>",
+            "<< /Type /Pages /Kids [\(pageIDs.map { "\($0) 0 R" }.joined(separator: " "))] /Count \(pages) >>",
+        ]
+        objects += pageIDs.map { _ in "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>" }
+        objects.append("<< /Type /Outlines /First \(itemIDs.first ?? 0) 0 R /Last \(itemIDs.last ?? 0) 0 R /Count \(bookmarks.count) >>")
+        for (index, (label, page)) in bookmarks.enumerated() {
+            var item = "<< /Title (\(label)) /Parent \(outlineID) 0 R /Dest [\(pageIDs[page]) 0 R /XYZ 0 792 null]"
+            if index > 0 { item += " /Prev \(itemIDs[index - 1]) 0 R" }
+            if index < bookmarks.count - 1 { item += " /Next \(itemIDs[index + 1]) 0 R" }
+            objects.append(item + " >>")
+        }
+        var pdf = "%PDF-1.4\n"
+        var offsets: [Int] = []
+        for (index, body) in objects.enumerated() {
+            offsets.append(pdf.utf8.count)
+            pdf += "\(index + 1) 0 obj\n\(body)\nendobj\n"
+        }
+        let xref = pdf.utf8.count
+        pdf += "xref\n0 \(objects.count + 1)\n0000000000 65535 f \n"
+        for offset in offsets { pdf += String(format: "%010d 00000 n \n", offset) }
+        pdf += "trailer\n<< /Size \(objects.count + 1) /Root 1 0 R >>\nstartxref\n\(xref)\n%%EOF\n"
+        try Data(pdf.utf8).write(to: url)
+        return url
+    }
+
+    /// Every bookmark as "label@page" (0-based), children indented with "  " per level.
+    public static func bookmarks(_ url: URL) -> [String] {
+        guard let doc = PDFDocument(url: url), let root = doc.outlineRoot else { return [] }
+        var lines: [String] = []
+        func walk(_ node: PDFOutline, depth: Int) {
+            for index in 0..<node.numberOfChildren {
+                guard let child = node.child(at: index) else { continue }
+                let destination = child.destination ?? (child.action as? PDFActionGoTo)?.destination
+                let page = destination?.page.map { String(doc.index(for: $0)) } ?? "-"
+                lines.append(String(repeating: "  ", count: depth) + "\(child.label ?? "")@\(page)")
+                walk(child, depth: depth + 1)
+            }
+        }
+        walk(root, depth: 0)
+        return lines
+    }
+}
