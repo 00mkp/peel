@@ -53,6 +53,8 @@ public final class AppModel: ObservableObject {
     @Published public var options = ActionOptions()
     /// "Overwrite existing files" — never inputs or this run's own outputs.
     @Published public var force = false
+    /// Keep the menu-bar panel open when clicking elsewhere (for dragging files in from Finder).
+    @Published public var panelPinned = false
     @Published public private(set) var isRunning = false
     @Published public private(set) var results: [ResultRow] = []
     @Published public private(set) var tools: [ToolStatus] = []
@@ -156,15 +158,31 @@ public final class AppModel: ObservableObject {
 
     public func run() async {
         guard canRun, let kind = selection, let action = try? options.action(for: kind, files: files) else { return }
+        _ = await perform(action)
+    }
+
+    /// Runs a wheel action with default options. The files and action show in the panel too.
+    /// Returns nil (and does nothing) when a job is already running or the action needs input.
+    public func runQuick(_ kind: ActionKind, on urls: [URL]) async -> [ResultRow]? {
+        guard !isRunning, let action = WheelMenu.action(for: kind) else { return nil }
+        files = []
+        add(urls)
+        selection = kind
+        return await perform(action)
+    }
+
+    private func perform(_ action: PeelAction) async -> [ResultRow] {
         let files = self.files
         let runner = ActionRunner(planner: OutputPlanner(force: force), locator: makeLocator())
         let token = CancelToken()
         self.token = token
         isRunning = true
         let outcomes = await Task.detached { runner.run(action, on: files, cancel: token) }.value
-        results = outcomes.map(ResultRow.init)
+        let rows = outcomes.map(ResultRow.init)
+        results = rows
         isRunning = false
         self.token = nil
+        return rows
     }
 
     public func cancel() {

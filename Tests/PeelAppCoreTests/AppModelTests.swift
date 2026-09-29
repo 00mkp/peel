@@ -253,3 +253,46 @@ final class FakeLoginItem: LoginItem {
         #expect(model.loginItemError?.contains("Login Items") == true)
     }
 }
+
+@MainActor
+@Suite struct QuickRunTests {
+    let dir: URL
+    init() throws { dir = try Fixtures.tempDir() }
+
+    @Test func runQuickRunsAndShowsInPanel() async throws {
+        let model = AppModel()
+        let a = try Fixtures.makePDF(at: dir.appendingPathComponent("a.pdf"), pages: 1)
+        let b = try Fixtures.makePDF(at: dir.appendingPathComponent("b.pdf"), pages: 1)
+        let rows = await model.runQuick(.pdfMerge, on: [a, b])
+        #expect(rows?.first?.succeeded == true)
+        #expect(model.files == [a, b] && model.selection == .pdfMerge)
+        #expect(model.results.count == 1)
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("a-merged.pdf").path))
+    }
+
+    @Test func runQuickRejectsActionsThatNeedInput() async throws {
+        let model = AppModel()
+        let a = try Fixtures.makePDF(at: dir.appendingPathComponent("a.pdf"), pages: 1)
+        #expect(await model.runQuick(.pdfExtract, on: [a]) == nil)
+    }
+
+    @Test func runQuickIsRefusedWhileBusy() async throws {
+        let tools = dir.appendingPathComponent("tools")
+        try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
+        try Fixtures.makeExecutable(at: tools.appendingPathComponent("ffmpeg"), script: "exec /bin/sleep 30")
+        let clip = try Fixtures.writeText("x", to: dir.appendingPathComponent("clip.mov"))
+        let model = AppModel(locator: { ToolLocator(searchPaths: [tools.path]) })
+        model.add([clip])
+        model.selection = .mediaCompress
+        let running = Task { await model.run() }
+        while !model.isRunning { await Task.yield() }
+        let a = try Fixtures.makePDF(at: dir.appendingPathComponent("a.pdf"), pages: 1)
+        #expect(await model.runQuick(.pdfSplit, on: [a]) == nil)
+        model.cancel()
+        await running.value
+    }
+
+    @Test func pinStateDefaultsOff() {
+        #expect(AppModel().panelPinned == false)
+    }
+}
