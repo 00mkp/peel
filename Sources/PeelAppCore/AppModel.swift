@@ -23,6 +23,13 @@ public struct ResultRow: Identifiable, Equatable {
 
     public var succeeded: Bool { message == nil && !cancelled }
 
+    public init(inputName: String, outputs: [URL], message: String?, cancelled: Bool) {
+        self.inputName = inputName
+        self.outputs = outputs
+        self.message = message
+        self.cancelled = cancelled
+    }
+
     init(_ outcome: ActionOutcome) {
         inputName = outcome.input?.lastPathComponent ?? "Selection"
         cancelled = outcome.isCancelled
