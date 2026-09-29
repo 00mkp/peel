@@ -22,7 +22,7 @@ final class Reporter {
     /// `label` names a whole-selection job (e.g. "merge") when there's no single input to blame.
     func failure(_ input: URL?, _ error: Error, label: String? = nil) {
         failed += 1
-        let message = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+        let message = (error as? PeelError)?.errorDescription ?? error.localizedDescription
         let subject = input?.lastPathComponent ?? label
         Console.err(subject.map { "✗ \($0): \(message)" } ?? "✗ \(message)")
         if let peelError = error as? PeelError, case let .missingTool(name, _) = peelError {

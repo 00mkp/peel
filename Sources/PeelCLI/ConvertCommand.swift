@@ -32,21 +32,21 @@ struct Convert: ParsableCommand {
         let isFolder = OutputPlanner.isDirectory(target)
         let combinesIntoOnePDF = to == .pdf && files.count > 1
             && files.allSatisfy { FileFormat(url: Paths.url($0))?.category == .image }
+        // Only a *known, different* format in the name is a mistake: notes.md for txt or "v1.2" are fine.
+        let named = isFolder ? nil : FileFormat(url: target)
         if files.count > 1 && !combinesIntoOnePDF {
-            if FileManager.default.fileExists(atPath: target.path) && !isFolder {
-                throw ValidationError("with several files, -o must be a folder (\(output) is a file)")
+            if !isFolder && (FileManager.default.fileExists(atPath: target.path) || named != nil) {
+                throw ValidationError("with several files, -o must be a folder (end it with / to make one)")
             }
-        } else if !isFolder {
+        } else if let named, named != to {
             let ext = OutputPlanner.splitName(target.lastPathComponent).ext
-            if !ext.isEmpty && FileFormat(name: ext) != to {
-                throw ValidationError("-o ends in .\(ext) but --to is \(to.rawValue); use a .\(to.fileExtension) name or a folder")
-            }
+            throw ValidationError("-o ends in .\(ext) but --to is \(to.rawValue); use a .\(to.fileExtension) name or a folder")
         }
     }
 
     func run() throws {
         if quality != nil && ![.jpg, .heic, .webp, .avif].contains(to) {
-            Console.err("note: --quality only affects jpg, heic, webp and avif; \(to.rawValue) is lossless")
+            Console.err("note: --quality is ignored for \(to.rawValue) (it only affects jpg, heic, webp and avif)")
         }
         let converter = Converter(planner: options.planner)
         let settings = ConvertOptions(image: ImageOptions(quality: quality, width: width, height: height), dpi: dpi)

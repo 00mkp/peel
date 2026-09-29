@@ -110,4 +110,18 @@ import TestSupport
         try ImageBackend.convert(p3, to: out, format: .png, options: ImageOptions(width: 20))
         #expect(Fixtures.profileName(out)?.contains("P3") == true)
     }
+
+    // Review follow-up: extended-range / float colour spaces can't back an 8-bit bitmap — fall back to sRGB.
+    @Test func extendedRangeImagesStillConvert() throws {
+        let hdr = try Fixtures.makeHDRImage(at: dir.appendingPathComponent("hdr.tiff"), width: 40, height: 30)
+        let transparent = try Fixtures.makeHDRImage(at: dir.appendingPathComponent("t.tiff"), width: 40, height: 30, alpha: true)
+        #expect(throws: Never.self) { try ImageBackend.convert(hdr, to: dir.appendingPathComponent("a.png"), format: .png, options: ImageOptions(width: 20)) }
+        #expect(throws: Never.self) { try ImageBackend.convert(transparent, to: dir.appendingPathComponent("b.jpg"), format: .jpg) }
+        #expect(ImageBackend.rgbSpace(of: try ImageBackend.load(hdr), bitmap: true).name != CGColorSpace.extendedSRGB)
+    }
+
+    @Test func signalKillDoesNotPretendToBeAnExitCode() {
+        let error = PeelError.toolFailed(name: "ffmpeg", exitCode: 9, lastLine: "was stopped (signal 9)", details: "")
+        #expect(error.errorDescription == "ffmpeg was stopped (signal 9)")
+    }
 }

@@ -36,6 +36,8 @@ public enum PeelError: Error, Equatable, LocalizedError {
             return "\(url.lastPathComponent) is password-protected (not supported yet)"
         case let .writeFailed(url):
             return "couldn't write \(url.path)"
+        case let .toolFailed(name, _, lastLine, _) where lastLine.hasPrefix("was stopped"):
+            return "\(name) \(lastLine)"   // killed by a signal: there's no exit code to report
         case let .toolFailed(name, code, lastLine, _):
             return "\(name) failed (exit \(code))" + (lastLine.isEmpty ? "" : ": \(lastLine)")
         case let .invalidArgument(message):

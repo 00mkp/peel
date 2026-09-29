@@ -251,3 +251,25 @@ extension Fixtures {
         return lines
     }
 }
+
+extension Fixtures {
+    /// A 16-bit float TIFF in extended-range sRGB (as HDR photo tools write); `alpha` clears the left half.
+    @discardableResult
+    public static func makeHDRImage(at url: URL, width: Int, height: Int, alpha: Bool = false) throws -> URL {
+        let info = CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.floatComponents.rawValue
+            | CGBitmapInfo.byteOrder16Little.rawValue
+        guard let space = CGColorSpace(name: CGColorSpace.extendedSRGB),
+              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 16, bytesPerRow: 0,
+                                      space: space, bitmapInfo: info) else { throw FixtureError.cannotCreate(url) }
+        context.setFillColor(CGColor(red: 1.3, green: 0.4, blue: 0.1, alpha: 1))   // > 1.0: outside sRGB
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        if alpha { context.clear(CGRect(x: 0, y: 0, width: width / 2, height: height)) }
+        guard let image = context.makeImage(),
+              let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.tiff.identifier as CFString, 1, nil) else {
+            throw FixtureError.cannotCreate(url)
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { throw FixtureError.cannotCreate(url) }
+        return url
+    }
+}

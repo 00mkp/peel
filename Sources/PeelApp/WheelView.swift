@@ -1,45 +1,75 @@
+import AppKit
 import PeelAppCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The action wheel: slots in a circle around a central "More…"; each slot is a drop target.
+/// The action wheel: round action chips around a small "More" hub. While a file hovers over a chip,
+/// that chip and a slice fanning out from the centre light up in the Mac's accent colour.
 struct WheelView: View {
     let slots: [WheelSlot]
     let onDrop: (WheelSlot?, [URL]) -> Void   // nil slot = More…
 
-    static let size: CGFloat = 280
+    static let size: CGFloat = 290
+    private static let ring: CGFloat = 98
+    @State private var hovered: Int?          // slot index under the drag; -1 = the hub
+
+    private var accent: Color { Color(nsColor: .controlAccentColor) }
+    private var span: Double { 360 / Double(max(slots.count, 1)) }
+    private func angle(_ index: Int) -> Double { -90 + Double(index) * span }
 
     var body: some View {
         ZStack {
-            Circle().fill(.ultraThinMaterial).frame(width: Self.size - 8, height: Self.size - 8)
-            ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
-                let angle = -Double.pi / 2 + Double(index) * 2 * .pi / Double(max(slots.count, 1))
-                SlotView(title: slot.label, systemImage: slot.systemImage) { urls in onDrop(slot, urls) }
-                    .offset(x: cos(angle) * 96, y: sin(angle) * 96)
+            if let hovered, hovered >= 0 {
+                let mid = angle(hovered)
+                let slice = Sector(start: .degrees(mid - span / 2 + 1), end: .degrees(mid + span / 2 - 1), inner: 32, outer: 140)
+                slice.fill(accent.opacity(0.35))
+                    .overlay(slice.stroke(accent.opacity(0.8), lineWidth: 1.5))
+                    .transition(.opacity)
             }
-            SlotView(title: "More…", systemImage: "ellipsis.circle", size: 76) { urls in onDrop(nil, urls) }
+            ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
+                let radians = angle(index) * .pi / 180
+                ChipView(title: slot.label, systemImage: slot.systemImage, size: 70, lit: hovered == index,
+                         accent: accent, onTargeted: { setHovered(index, $0) }) { urls in onDrop(slot, urls) }
+                    .offset(x: cos(radians) * Self.ring, y: sin(radians) * Self.ring)
+            }
+            ChipView(title: nil, systemImage: "ellipsis", size: 56, lit: hovered == -1, accent: accent,
+                     onTargeted: { setHovered(-1, $0) }) { urls in onDrop(nil, urls) }
+                .help("More… — open these files in the Peel panel")
         }
         .frame(width: Self.size, height: Self.size)
+        .animation(.easeOut(duration: 0.12), value: hovered)
+    }
+
+    private func setHovered(_ index: Int, _ targeted: Bool) {
+        if targeted { hovered = index } else if hovered == index { hovered = nil }
     }
 }
 
-private struct SlotView: View {
-    let title: String
+/// One round chip; a drop target.
+private struct ChipView: View {
+    let title: String?
     let systemImage: String
-    var size: CGFloat = 70
+    let size: CGFloat
+    let lit: Bool
+    let accent: Color
+    let onTargeted: (Bool) -> Void
     let onDrop: ([URL]) -> Void
     @State private var targeted = false
 
     var body: some View {
         VStack(spacing: 3) {
-            Image(systemName: systemImage).font(.system(size: 18, weight: .semibold))
-            Text(title).font(.caption.bold()).lineLimit(1).minimumScaleFactor(0.7)
+            Image(systemName: systemImage).font(.system(size: title == nil ? 16 : 18, weight: .semibold))
+            if let title {
+                Text(title).font(.system(size: 10.5, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+            }
         }
         .frame(width: size, height: size)
-        .background(Circle().fill(targeted ? Color.accentColor : Color(nsColor: .windowBackgroundColor).opacity(0.9)))
-        .foregroundStyle(targeted ? Color.white : Color.primary)
-        .scaleEffect(targeted ? 1.12 : 1)
-        .animation(.easeOut(duration: 0.12), value: targeted)
+        .background(Circle().fill(lit ? accent : Color(white: title == nil ? 0.22 : 0.16)))
+        .overlay(Circle().stroke(Color.white.opacity(lit ? 0.5 : 0.12), lineWidth: 1))
+        .foregroundStyle(Color.white.opacity(title == nil && !lit ? 0.8 : 1))
+        .shadow(color: .black.opacity(0.4), radius: 8, y: 3)
+        .scaleEffect(lit ? 1.1 : 1)
+        .onChange(of: targeted) { onTargeted($0) }
         .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
             let group = DispatchGroup()
             let collected = OrderedURLs(count: providers.count)   // keep drag order (matters for Merge)
@@ -53,5 +83,22 @@ private struct SlotView: View {
             group.notify(queue: .main) { onDrop(collected.urls) }
             return true
         }
+    }
+}
+
+/// A ring slice (annular sector), drawn behind the hovered chip.
+private struct Sector: Shape {
+    var start: Angle
+    var end: Angle
+    var inner: CGFloat
+    var outer: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let centre = CGPoint(x: rect.midX, y: rect.midY)
+        var path = Path()
+        path.addArc(center: centre, radius: outer, startAngle: start, endAngle: end, clockwise: false)
+        path.addArc(center: centre, radius: inner, startAngle: end, endAngle: start, clockwise: true)
+        path.closeSubpath()
+        return path
     }
 }

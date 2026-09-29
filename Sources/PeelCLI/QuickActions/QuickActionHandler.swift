@@ -103,10 +103,10 @@ struct QuickActionHandler {
             return 1
         }
         let lines = failures.prefix(10).map { input, error in
-            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            let message = (error as? PeelError)?.errorDescription ?? error.localizedDescription
             return grouped ? message : "\(input?.lastPathComponent ?? "selection"): \(message)"
         }
-        let header = outputs.isEmpty ? "Peel couldn't finish:" : "\(verb) \(outputs.count) file(s), but some failed:"
+        let header = outputs.isEmpty ? "Peel couldn't finish:" : "\(verb) \(outputs.count) \(noun), but some failed:"
         ui.alert(([header] + lines).joined(separator: "\n"), copyable: nil)
         return 1
     }

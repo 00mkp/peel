@@ -80,4 +80,10 @@ import Testing
         collector.set(1, nil)
         #expect(collector.urls.map(\.lastPathComponent) == ["1.pdf", "3.pdf"])
     }
+
+    @Test func conversionIconsMatchTheTarget() {
+        #expect(WheelMenu.symbol(.convert(.jpg)) == "photo")
+        #expect(WheelMenu.symbol(.convert(.mp3)) == "waveform")
+        #expect(WheelMenu.symbol(.convert(.txt)) == "text.alignleft")
+    }
 }

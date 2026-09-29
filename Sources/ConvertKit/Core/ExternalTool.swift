@@ -105,13 +105,6 @@ public struct ProcessResult: Sendable {
         let meaningful = lines.filter { line in !Self.noise.contains { line.contains($0) } }
         return meaningful.last ?? lines.last ?? ""
     }
-
-    /// Last non-empty stderr line — usually the actual error message.
-    public var lastErrorLine: String {
-        stderr.split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .last(where: { !$0.isEmpty }) ?? ""
-    }
 }
 
 public enum ProcessRunner {

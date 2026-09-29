@@ -50,7 +50,8 @@ extension PDFCommand {
         @OptionGroup var options: OutputOptions
 
         func validate() throws {
-            if let output = options.output, output.lowercased().hasSuffix(".pdf") {
+            if let output = options.output, output.lowercased().hasSuffix(".pdf"),
+               !OutputPlanner.isDirectory(Paths.url(output)) {
                 throw ValidationError("split writes several files, so -o must be a folder (got \(output))")
             }
         }

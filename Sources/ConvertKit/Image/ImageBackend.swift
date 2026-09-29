@@ -22,7 +22,11 @@ public enum ImageBackend {
         if FileFormat(url: url) == .svg {
             let rsvg = try locator.require(.rsvgConvert)
             let png = FileManager.default.temporaryDirectory.appendingPathComponent("peel-\(UUID().uuidString).png")
-            defer { try? FileManager.default.removeItem(at: png) }
+            InterruptCleanup.track(png)
+            defer {
+                try? FileManager.default.removeItem(at: png)
+                InterruptCleanup.untrack(png)
+            }
             try ProcessRunner.runChecked(rsvg, ["-f", "png", "-o", png.path, url.path])
             return try load(png, locator: locator)
         }
@@ -63,8 +67,8 @@ public enum ImageBackend {
     }
 
     public static func resize(_ image: CGImage, width: Int, height: Int) throws -> CGImage {
-        guard let space = rgbSpace(of: image),
-              let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+        let space = rgbSpace(of: image)
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             throw PeelError.invalidArgument("image is too large to resize")
         }
@@ -75,9 +79,15 @@ public enum ImageBackend {
     }
 
     /// The image's own RGB colour space (keeps Display P3 etc.), or sRGB for anything else.
-    static func rgbSpace(of image: CGImage) -> CGColorSpace? {
-        if let space = image.colorSpace, space.model == .rgb { return space }
-        return CGColorSpace(name: CGColorSpace.sRGB)
+    /// A colour space for drawing `image` into an 8-bit bitmap: the image's own RGB space when an 8-bit
+    /// context supports it (keeps Display P3 etc.), otherwise sRGB (extended-range/float spaces can't
+    /// back an 8-bit bitmap).
+    static func rgbSpace(of image: CGImage, bitmap: Bool = true) -> CGColorSpace {
+        let sRGB = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        guard let own = image.colorSpace, own.model == .rgb,
+              CGContext(data: nil, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 0, space: own,
+                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) != nil else { return sRGB }
+        return own
     }
 
     public static func convert(_ input: URL, to output: URL, format: FileFormat,

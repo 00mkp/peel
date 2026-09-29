@@ -76,7 +76,15 @@ public enum WheelMenu {
 
     static func symbol(_ kind: ActionKind) -> String {
         switch kind {
-        case .convert: return "arrow.triangle.2.circlepath"
+        case let .convert(target):
+            switch target.category {
+            case .image: return "photo"
+            case .video: return "film"
+            case .audio: return "waveform"
+            case .subtitle: return "captions.bubble"
+            case .archive: return "archivebox"
+            case .document: return target == .pdf ? "doc.richtext" : "text.alignleft"
+            }
         case .pdfMerge: return "doc.on.doc"
         case .pdfSplit: return "scissors"
         case .pdfRotate: return "rotate.right"

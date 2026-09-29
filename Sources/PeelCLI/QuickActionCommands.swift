@@ -31,18 +31,23 @@ struct InstallQuickActions: ParsableCommand {
     func run() throws {
         let directory = dir.map(Paths.url) ?? QuickActionPaths.services
         let peel = peelPath.map(Paths.url) ?? QuickActionPaths.currentPeel
+        var installed = 0
+        var failed = 0
         for kind in QuickActionKind.allCases {
             do {
                 try WorkflowGenerator.write(kind, peel: peel, into: directory,
                                             testLog: testLog.map(Paths.url), testChoice: testChoice)
                 Console.out("✓ \(kind.menuTitle)")
+                installed += 1
             } catch {
-                let message = (error as? LocalizedError)?.errorDescription ?? "\(error)"
-                Console.err("⚠ skipped \(kind.menuTitle): \(message)")
+                failed += 1
+                let message = (error as? PeelError)?.errorDescription ?? error.localizedDescription
+                Console.err("✗ \(kind.menuTitle): \(message)")
             }
         }
         if dir == nil { QuickActionPaths.refreshServicesMenu() }
-        Console.out("Right-click files in Finder → Quick Actions → Peel - …")
+        if installed > 0 { Console.out("Right-click files in Finder → Quick Actions → Peel - …") }
+        if failed > 0 { throw ExitCode(1) }
     }
 }
 
