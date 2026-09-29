@@ -69,4 +69,14 @@ struct QuickActionWorkflowTests {
         try run(.merge, on: [png])
         #expect(logText().contains("alert: Merge PDFs needs two or more PDF files."))
     }
+
+    // Checkpoint B I1: a failure peel already reported must not also fail the workflow (blank Automator error).
+    @Test func reportedFailureDoesNotFailTheWorkflow() throws {
+        try install()
+        let png = try Fixtures.makeImage(at: dir.appendingPathComponent("q.png"), width: 10, height: 10, type: .png)
+        let result = try ProcessRunner.run(URL(fileURLWithPath: "/usr/bin/automator"),
+                                           ["-i", png.path, services.appendingPathComponent(QuickActionKind.merge.bundleName).path])
+        #expect(logText().contains("alert: Merge PDFs needs two or more PDF files."))
+        #expect(result.exitCode == 0)
+    }
 }

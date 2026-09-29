@@ -61,7 +61,6 @@ import TestSupport
         let script = WorkflowGenerator.script(for: .zip, peel: URL(fileURLWithPath: "/nonexistent/peel"))
         let result = try ProcessRunner.run(URL(fileURLWithPath: "/bin/zsh"), ["-c", script, "zsh", "/tmp/x"],
                                            environment: ["PEEL_OSASCRIPT": "/bin/echo"])
-        #expect(result.exitCode == 1)
         #expect(result.stdout.contains("display dialog"))
         #expect(result.stdout.contains("install.sh"))
     }
@@ -83,5 +82,24 @@ import TestSupport
                                               testLog: URL(fileURLWithPath: "/tmp/log.txt"), testChoice: "jpg")
         #expect(script.contains("export PEEL_QUICK_ACTION_LOG='/tmp/log.txt'"))
         #expect(script.contains("export PEEL_QUICK_ACTION_CHOICE='jpg'"))
+    }
+
+    // Checkpoint B I1: after its own dialog the script must exit 0, or Automator adds a blank error.
+    @Test func missingPeelDialogIsTheOnlyError() throws {
+        let script = WorkflowGenerator.script(for: .zip, peel: URL(fileURLWithPath: "/nonexistent/peel"))
+        let result = try ProcessRunner.run(URL(fileURLWithPath: "/bin/zsh"), ["-c", script, "zsh", "/tmp/x"],
+                                           environment: ["PEEL_OSASCRIPT": "/bin/echo"])
+        #expect(result.exitCode == 0)
+    }
+
+    // Review Focus 1: a crash inside peel still produces a readable dialog.
+    @Test func crashShowsADialog() throws {
+        let fake = dir.appendingPathComponent("peel")
+        try Fixtures.makeExecutable(at: fake, script: "kill -SEGV $$")
+        let script = WorkflowGenerator.script(for: .zip, peel: fake)
+        let result = try ProcessRunner.run(URL(fileURLWithPath: "/bin/zsh"), ["-c", script, "zsh", "/tmp/x"],
+                                           environment: ["PEEL_OSASCRIPT": "/bin/echo"])
+        #expect(result.stdout.contains("quit unexpectedly"))
+        #expect(result.exitCode == 0)
     }
 }

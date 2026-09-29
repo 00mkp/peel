@@ -75,8 +75,9 @@ struct QuickActionCommand: ParsableCommand {
             LogUI(log: URL(fileURLWithPath: $0), choice: environment["PEEL_QUICK_ACTION_CHOICE"])
         } ?? OsascriptUI()
         let locator = ToolLocator.standard
-        let code = QuickActionHandler(ui: ui, runner: ActionRunner(locator: locator), locator: locator)
+        // The handler has already told the person about any failure (dialog/notification); exiting
+        // non-zero would make Automator show a second, blank error.
+        _ = QuickActionHandler(ui: ui, runner: ActionRunner(locator: locator), locator: locator)
             .handle(kind, files: files.map(Paths.url))
-        if code != 0 { throw ExitCode(code) }
     }
 }

@@ -14,12 +14,22 @@ enum WorkflowGenerator {
         var lines = ["P=\(shellQuote(peel.path))"]
         if let testLog { lines.append("export PEEL_QUICK_ACTION_LOG=\(shellQuote(testLog.path))") }
         if let testChoice { lines.append("export PEEL_QUICK_ACTION_CHOICE=\(shellQuote(testChoice))") }
+        // Once peel has shown its own dialog the script exits 0 — a non-zero status would make Automator
+        // add a second, blank error. Crashes (status >= 128) get a dialog here; other non-zero exits
+        // (e.g. usage errors) are left for Automator to show with peel's stderr.
         lines += [
+            "OSA=\"${PEEL_OSASCRIPT:-/usr/bin/osascript}\"",
             "if [ ! -x \"$P\" ]; then",
-            "  \"${PEEL_OSASCRIPT:-/usr/bin/osascript}\" -e 'display dialog \"The peel command-line tool was not found. Re-run install.sh from the peel folder.\" buttons {\"OK\"} default button 1 with title \"Peel\" with icon caution'",
-            "  exit 1",
+            "  \"$OSA\" -e 'display dialog \"The peel command-line tool was not found. Re-run install.sh from the peel folder.\" buttons {\"OK\"} default button 1 with title \"Peel\" with icon caution'",
+            "  exit 0",
             "fi",
-            "exec \"$P\" quick-action \(kind.rawValue) \"$@\"",
+            "\"$P\" quick-action \(kind.rawValue) \"$@\"",
+            "rc=$?",
+            "if [ $rc -ge 128 ]; then",
+            "  \"$OSA\" -e 'display dialog \"Peel quit unexpectedly while running this Quick Action.\" buttons {\"OK\"} default button 1 with title \"Peel\" with icon stop'",
+            "  exit 0",
+            "fi",
+            "exit $rc",
         ]
         return lines.joined(separator: "\n")
     }
