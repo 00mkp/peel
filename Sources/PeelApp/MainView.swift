@@ -29,8 +29,8 @@ struct MainView: View {
                 Divider()
                 ResultsList()
             }
-            Spacer(minLength: 0)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .padding(compact ? 12 : 16)
         .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
             for provider in providers {
@@ -55,7 +55,8 @@ struct DropArea: View {
             Text("Drop files here").font(.headline)
             Button("Choose Files…") { choose() }.disabled(model.isRunning)
         }
-        .frame(maxWidth: .infinity, minHeight: compact ? 90 : 130)
+        .padding(.vertical, compact ? 16 : 24)
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
@@ -101,7 +102,7 @@ struct FileList: View {
                     }
                 }
             }
-            .frame(maxHeight: 110)
+            .frame(height: min(CGFloat(model.files.count) * 22, 110))
         }
     }
 }
@@ -139,7 +140,7 @@ struct ResultsList: View {
                     }
                 }
             }
-            .frame(maxHeight: 160)
+            .frame(height: min(CGFloat(model.results.count) * 40, 160))
         }
     }
 }

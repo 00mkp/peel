@@ -38,13 +38,15 @@ struct PeelApp: App {
         Window("Peel", id: "main") {
             MainView()
                 .environmentObject(model)
-                .frame(minWidth: 520, minHeight: 560)
+                .frame(width: 540)
                 .onAppear { delegate.model = model }
         }
+        // The window grows with its content: just the drop area at first, then files, options, results.
+        .windowResizability(.contentSize)
         MenuBarExtra {
             MainView(compact: true)
                 .environmentObject(model)
-                .frame(width: 380, height: 540)
+                .frame(width: 380)
                 .onAppear { delegate.model = model }
         } label: {
             Image(nsImage: PeelIcon.menuBarImage())
