@@ -79,15 +79,20 @@ peel uninstall-quick-actions
 ## Peel.app
 
 `./install.sh` also builds `~/Applications/Peel.app` (or run `scripts/build-app.sh`; set `APP_DIR`
-to install elsewhere). Peel lives in the menu bar — look for the peel-twist icon. Click it, drop
-files into the popover (or use **Choose Files…**), pick an action, adjust options and press Run.
+to install elsewhere). Peel lives only in the menu bar — look for the peel-twist icon. There is no
+window and no Dock icon.
 
-- **Open Window** in the popover gives a larger window; it also opens when you open Peel again from
-  Finder/Spotlight or open files with it. The Dock icon shows only while a Peel window is open.
-- The gear menu has **Settings…** (optional tools, **Open at Login**) and **Quit Peel**; with a window
-  open, Settings is also in the Peel menu (⌘,).
-- Actions that need a tool you don't have are listed separately with the install command; Peel
-  re-checks whenever you come back to it.
+- **Action wheel:** select files in Finder (or anywhere), start dragging, and hold **Shift** — a
+  wheel of quick actions appears at the cursor (Merge, Split, → JPG, Compress, GIF, Extract, Zip…,
+  depending on the files). Drop on one to run it; a notification tells you the result. Drop on
+  **More…** to open the files in the menu-bar panel instead.
+- **Menu-bar panel:** click the icon, or drop files onto it. Pick an action, set options (pages,
+  sizes, formats…), press Run. The **pin** keeps the panel open while you drag files in from Finder.
+- The **gear** has **Settings…** (optional tools, **Open at Login**) and **Quit Peel**.
+- "Open With → Peel" or opening Peel again also opens the panel.
+- The first time, macOS may ask to allow Peel's notifications and, for the wheel, to let Peel read
+  what's being dragged. Actions that need a tool you don't have are listed separately with the
+  install command; Peel re-checks whenever you come back to it.
 
 ## Behaviour
 

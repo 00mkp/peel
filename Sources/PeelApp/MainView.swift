@@ -5,30 +5,11 @@ import UniformTypeIdentifiers
 
 struct MainView: View {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.peelActions) private var actions
-    var compact = false
     @State private var targeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if compact {
-                HStack {
-                    Text("Peel").font(.headline)
-                    Spacer()
-                    Button("Open Window") { actions.openWindow() }
-                    Menu {
-                        Button("Settings…") { actions.openSettings() }
-                        Divider()
-                        Button("Quit Peel") { NSApp.terminate(nil) }
-                    } label: {
-                        Image(systemName: "gearshape")
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                }
-                LoginToggle()
-            }
-            DropArea(targeted: targeted, compact: compact)
+            DropArea(targeted: targeted, compact: true)
             if !model.files.isEmpty {
                 FileList()
                 Divider()
@@ -40,7 +21,6 @@ struct MainView: View {
             }
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(compact ? 12 : 16)
         .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
             for provider in providers {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
