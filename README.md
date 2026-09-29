@@ -1,15 +1,40 @@
 # peel
 
-Free, open-source, local-only file converter and toolkit for macOS. Convert images, PDFs,
-audio/video, subtitles and archives from the terminal — nothing is ever uploaded.
+**A free, open-source file converter and toolkit for macOS that never uploads anything.**
+Convert images, PDFs, audio/video, subtitles and archives — from a Shift-drag wheel, a menu-bar
+panel, Finder's right-click menu, or the terminal.
+
+<p align="center">
+  <img src="docs/images/wheel.png" width="300" alt="The action wheel: drag files, hold Shift, drop on an action">
+  &nbsp;&nbsp;
+  <img src="docs/images/panel.png" width="340" alt="The menu-bar panel with two PDFs ready to merge">
+</p>
+
+## What it does
+
+- **Shift-drag wheel** — drag files anywhere, hold Shift, drop on an action (Merge, Split, → JPG,
+  Compress, GIF, Extract, Zip…). The wheel shows only what fits the files you're dragging.
+- **Menu-bar panel** — everything else, with options: page ranges, sizes, quality, trim times.
+- **Finder Quick Actions** — right-click → Convert To…, Merge PDFs, Split PDF, Extract Here, Zip.
+- **A complete CLI** — every feature, scriptable (`peel convert`, `peel pdf …`, `peel media …`).
+- **PDF tools** — merge, split, extract, delete, rotate, reorder, text, info; links and bookmarks
+  follow their pages.
+- **Images** — JPG, PNG, HEIC, TIFF, BMP, GIF, WebP, AVIF, SVG in; resize and quality control;
+  EXIF orientation and wide-gamut colour kept.
+- **Audio & video** — convert between MP4/MOV/MKV/WebM/AVI/WMV and MP3/M4A/WAV/FLAC/OGG/Opus/AIFF,
+  trim, compress (optionally to a target size), make GIFs, extract audio.
+- **Subtitles** — SRT ↔ VTT ↔ TXT. **Archives** — extract zip/tar/gz/bz2/xz/rar/7z, create zip/tar.gz.
+- **Safe by default** — never overwrites your originals, writes atomically, Ctrl-C leaves nothing
+  half-done, and every missing optional tool is explained with the exact `brew install` command.
 
 ## Install
 
 Requires macOS 13+ and Xcode or the Swift command-line tools.
 
 ```bash
-git clone <this repo> peel && cd peel
-./install.sh            # installs to ~/.local/bin (override with PREFIX=/usr/local ./install.sh)
+git clone https://github.com/00mkp/peel.git && cd peel
+./install.sh     # CLI → ~/.local/bin, Finder Quick Actions, and ~/Applications/Peel.app
+                 # (override with PREFIX=/usr/local ./install.sh or APP_DIR=/Applications ./install.sh)
 ```
 
 Optional extras unlock more formats — `peel doctor` shows what's installed:
@@ -27,7 +52,10 @@ brew install ffmpeg webp libavif unar librsvg
 
 PDF tools, JPG/PNG/HEIC/TIFF/BMP/GIF images, subtitles, zip and tar need nothing extra.
 
-## Examples
+## Command line
+
+Every feature is a command; `peel --help` and `peel <command> --help` list all options.
+
 
 ```bash
 # Convert (format detected automatically)
@@ -114,4 +142,6 @@ scripts/test.sh          # runs the tests (use this rather than bare `swift test
                          # Command Line Tools installed, `swift test` silently runs no tests)
 ```
 
-MIT licensed.
+## License
+
+MIT — see [LICENSE](LICENSE).
