@@ -60,7 +60,8 @@ public struct OutputPlanner: Sendable {
         while true {
             let name = ext.isEmpty ? "\(base) \(n)" : "\(base) \(n).\(ext)"
             let candidate = dir.appendingPathComponent(name)
-            if !fm.fileExists(atPath: candidate.path) { return candidate }
+            // Also skip protected names: outputs planned earlier in this run may not be on disk yet.
+            if !fm.fileExists(atPath: candidate.path) && !Self.isProtected(candidate, inputs: inputs) { return candidate }
             n += 1
         }
     }

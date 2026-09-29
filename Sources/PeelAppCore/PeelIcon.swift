@@ -17,8 +17,8 @@ public enum PeelIcon {
     static func drawTwist(in rect: NSRect) {
         let turns = 2.5
         let steps = 240
-        let top = rect.maxY - rect.height * 0.08
-        let bottom = rect.minY + rect.height * 0.08
+        let top = rect.maxY - rect.height * 0.10
+        let bottom = rect.minY + rect.height * 0.03
         let radius = rect.width * 0.30
         func taper(_ t: Double) -> Double { 0.55 + 0.45 * sin(.pi * t) }
         func point(_ t: Double) -> (NSPoint, depth: Double) {
@@ -32,8 +32,8 @@ public enum PeelIcon {
                 let (start, depth) = point(t0)
                 let (end, _) = point(Double(step + 1) / Double(steps))
                 guard (depth > 0) == frontPass else { continue }
-                let width = rect.width * (frontPass ? 0.06 + 0.035 * depth : 0.03) * taper(t0)
-                NSColor.black.withAlphaComponent(frontPass ? 1 : 0.4).setStroke()
+                let width = rect.width * (frontPass ? 0.06 + 0.035 * depth : 0.045) * taper(t0)
+                NSColor.black.withAlphaComponent(frontPass ? 1 : 0.55).setStroke()
                 let segment = NSBezierPath()
                 segment.move(to: start)
                 segment.line(to: end)

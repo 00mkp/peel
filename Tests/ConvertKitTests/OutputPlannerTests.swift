@@ -103,4 +103,11 @@ import TestSupport
         FileManager.default.createFile(atPath: archive.path, contents: Data("x".utf8))
         #expect(OutputPlanner(force: true).resolve(folder, avoiding: [archive]).lastPathComponent == "b 2")
     }
+
+    @Test func numberingSkipsProtectedNamesNotYetOnDisk() {
+        _ = touch("x.pdf")
+        let planned = [dir.appendingPathComponent("x.pdf"), dir.appendingPathComponent("x 2.pdf")]
+        #expect(OutputPlanner(force: true).resolve(dir.appendingPathComponent("x.pdf"), avoiding: planned).lastPathComponent
+            == "x 3.pdf")
+    }
 }

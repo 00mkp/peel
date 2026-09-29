@@ -221,9 +221,35 @@ import TestSupport
 final class FakeLoginItem: LoginItem {
     var enabled = false
     var failure: String?
+    var approvalNeeded = false
     var isEnabled: Bool { enabled }
+    var needsApproval: Bool { approvalNeeded }
     func setEnabled(_ on: Bool) throws {
         if let failure { throw PeelError.invalidArgument(failure) }
+        if approvalNeeded { return }
         enabled = on
+    }
+}
+
+@MainActor
+@Suite struct LoginItemTests {
+    // Polish review: the toggle follows changes made in System Settings.
+    @Test func loginItemIsReReadOnActivation() {
+        let item = FakeLoginItem()
+        let model = AppModel(loginItem: item)
+        item.enabled = true
+        model.refreshLoginItem()
+        #expect(model.launchAtLogin)
+    }
+
+    // Polish review: macOS wants approval → say so instead of silently snapping back to off.
+    @Test func loginItemNeedingApprovalExplainsWhy() {
+        let item = FakeLoginItem()
+        item.approvalNeeded = true
+        let model = AppModel(loginItem: item)
+        model.setLaunchAtLogin(true)
+        #expect(!model.launchAtLogin)
+        #expect(model.loginItemNeedsApproval)
+        #expect(model.loginItemError?.contains("Login Items") == true)
     }
 }

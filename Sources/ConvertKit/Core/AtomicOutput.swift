@@ -36,7 +36,8 @@ public enum AtomicOutput {
 
 /// Several outputs that should appear together (the pages of one PDF): each is written to a hidden
 /// temp next to its destination, and nothing replaces an existing file until `commit()` — so a
-/// cancelled or failed run leaves every existing file as it was. `discard()` removes the temps.
+/// cancelled or failed render leaves every existing file as it was. (If `commit()` itself fails
+/// partway, earlier parts are already in place; each move is atomic.) `discard()` removes the temps.
 public final class AtomicBatch {
     private var staged: [(temp: URL, destination: URL)] = []
 

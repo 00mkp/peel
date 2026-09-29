@@ -22,7 +22,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
-        Task { @MainActor in self.model?.refreshTools() }
+        Task { @MainActor in
+            self.model?.refreshTools()
+            self.model?.refreshLoginItem()
+        }
     }
 }
 

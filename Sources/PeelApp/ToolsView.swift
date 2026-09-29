@@ -51,7 +51,10 @@ struct LoginToggle: View {
         VStack(alignment: .leading, spacing: 2) {
             Toggle("Open at Login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
             if let error = model.loginItemError {
-                Text(error).font(.caption).foregroundStyle(.red)
+                Text(error).font(.caption).foregroundStyle(model.loginItemNeedsApproval ? .orange : .red)
+            }
+            if model.loginItemNeedsApproval {
+                Button("Open Login Items Settings") { SystemLoginItem.openSettings() }
             }
         }
     }

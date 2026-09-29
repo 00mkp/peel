@@ -97,4 +97,12 @@ import TestSupport
         #expect(FileManager.default.fileExists(atPath: path("d-p1-2.pdf")))
         #expect(FileManager.default.fileExists(atPath: path("d-p1-2 2.pdf")))
     }
+
+    // Polish review I1: three copies of a range must give three files (names planned but not yet written).
+    @Test func splitTripleRangesKeepsAll() throws {
+        #expect(runPeel(["pdf", "split", try pdf("d.pdf"), "--pages", "1,1,1"]).code == 0)
+        for name in ["d-p1.pdf", "d-p1 2.pdf", "d-p1 3.pdf"] {
+            #expect(FileManager.default.fileExists(atPath: path(name)))
+        }
+    }
 }

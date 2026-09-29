@@ -53,6 +53,7 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var launchAtLogin: Bool
     /// Why the last Open at Login change failed, if it did.
     @Published public private(set) var loginItemError: String?
+    @Published public private(set) var loginItemNeedsApproval = false
 
     private let makeLocator: () -> ToolLocator
     private let loginItem: LoginItem
@@ -73,7 +74,16 @@ public final class AppModel: ObservableObject {
             loginItemError = "Couldn't change Open at Login: " +
                 ((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
         }
+        refreshLoginItem()
+        if loginItemNeedsApproval {
+            loginItemError = "Allow Peel in System Settings → General → Login Items to finish turning this on."
+        }
+    }
+
+    /// Re-reads Open at Login (it can be changed in System Settings while Peel runs).
+    public func refreshLoginItem() {
         launchAtLogin = loginItem.isEnabled
+        loginItemNeedsApproval = loginItem.needsApproval
     }
 
     public var availableEntries: [CatalogEntry] { entries.filter(\.isAvailable) }
@@ -126,6 +136,7 @@ public final class AppModel: ObservableObject {
 
     public var canRun: Bool {
         guard let kind = selection else { return false }
+        // hasRequiredInput is checked on its own because validationMessage is nil for empty fields.
         return !isRunning && !files.isEmpty && selectedEntry?.isAvailable == true
             && options.hasRequiredInput(for: kind) && validationMessage == nil
     }
