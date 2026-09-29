@@ -22,12 +22,16 @@ struct MainView: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
-            for provider in providers {
+            let group = DispatchGroup()
+            let collected = OrderedURLs(count: providers.count)   // keep drag order
+            for (index, provider) in providers.enumerated() {
+                group.enter()
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    guard let url else { return }
-                    Task { @MainActor in model.add([url]) }
+                    collected.set(index, url)
+                    group.leave()
                 }
             }
+            group.notify(queue: .main) { model.add(collected.urls) }
             return true
         }
     }

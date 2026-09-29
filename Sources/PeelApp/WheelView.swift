@@ -42,16 +42,15 @@ private struct SlotView: View {
         .animation(.easeOut(duration: 0.12), value: targeted)
         .onDrop(of: [UTType.fileURL], isTargeted: $targeted) { providers in
             let group = DispatchGroup()
-            var urls: [URL] = []
-            let lock = NSLock()
-            for provider in providers {
+            let collected = OrderedURLs(count: providers.count)   // keep drag order (matters for Merge)
+            for (index, provider) in providers.enumerated() {
                 group.enter()
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    if let url { lock.lock(); urls.append(url); lock.unlock() }
+                    collected.set(index, url)
                     group.leave()
                 }
             }
-            group.notify(queue: .main) { onDrop(urls) }
+            group.notify(queue: .main) { onDrop(collected.urls) }
             return true
         }
     }

@@ -5,13 +5,14 @@ import SwiftUI
 
 /// The menu-bar icon and its panel. Files dropped on the icon open the panel with them loaded.
 @MainActor
-final class StatusController: NSObject {
+final class StatusController: NSObject, NSPopoverDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let popover = NSPopover()
     private var fallback: NSPanel?
     private let model: AppModel
     private let makeContent: () -> AnyView
     private var pinWatch: AnyCancellable?
+    private var lastClosed = Date.distantPast
 
     init(model: AppModel, content: @escaping () -> AnyView) {
         self.model = model
@@ -22,8 +23,12 @@ final class StatusController: NSObject {
         popover.contentViewController = host
         popover.behavior = .transient
         popover.animates = true
+        popover.delegate = self
         if let button = item.button {
             button.image = PeelIcon.menuBarImage()
+            button.target = self                        // VoiceOver / keyboard menu-bar navigation
+            button.action = #selector(buttonPressed)
+            button.setAccessibilityLabel("Peel")
             let drop = StatusDropView(frame: button.bounds)
             drop.autoresizingMask = [.width, .height]
             drop.onClick = { [weak self] in self?.toggle() }
@@ -38,8 +43,20 @@ final class StatusController: NSObject {
         }
     }
 
+    @objc private func buttonPressed() { toggle() }
+
     func toggle() {
-        if popover.isShown { popover.performClose(nil) } else { show() }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else if Date().timeIntervalSince(lastClosed) > 0.3 {
+            // (A transient popover closes itself on the same click that lands on the icon;
+            // without this check that click would reopen it straight away.)
+            show()
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        lastClosed = Date()
     }
 
     /// Shows the panel under the icon, or — when the icon is hidden in the menu-bar overflow —

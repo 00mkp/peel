@@ -30,11 +30,14 @@ final class WheelController {
     private func tick() {
         let pasteboard = NSPasteboard(name: .drag)
         let count = pasteboard.changeCount
-        if count != lastTypesCount {           // only look at the types when a new drag began
+        let pressed = NSEvent.pressedMouseButtons & 1 != 0
+        // Look at the types when a new drag begins — and again while pressed if no files were seen
+        // yet (a tick can land between the source clearing the pasteboard and filling it).
+        if count != lastTypesCount || (pressed && !lastHasFiles) {
             lastTypesCount = count
             lastHasFiles = pasteboard.types?.contains(.fileURL) ?? false
         }
-        let sample = DragSample(mouseDown: NSEvent.pressedMouseButtons & 1 != 0,
+        let sample = DragSample(mouseDown: pressed,
                                 shift: NSEvent.modifierFlags.contains(.shift),
                                 dragChangeCount: count, hasFiles: lastHasFiles, location: NSEvent.mouseLocation)
         switch detector.update(sample) {
@@ -65,7 +68,13 @@ final class WheelController {
             self?.handleDrop(slot: slot, urls: urls.isEmpty ? files : urls)
         }
         let size = WheelView.size
-        let frame = NSRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
+        var frame = NSRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
+        // Keep the whole wheel on the screen the cursor is on.
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(point) }) ?? NSScreen.main {
+            let area = screen.visibleFrame
+            frame.origin.x = min(max(frame.minX, area.minX), area.maxX - size)
+            frame.origin.y = min(max(frame.minY, area.minY), area.maxY - size)
+        }
         if panel == nil {
             let panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
                                 backing: .buffered, defer: false)
@@ -84,17 +93,24 @@ final class WheelController {
 
     private func handleDrop(slot: WheelSlot?, urls: [URL]) {
         panel?.orderOut(nil)
+        let showPanel: () -> Void = { [weak self] in self?.status.show() }
         guard let slot else {
-            if !model.isRunning { model.clear(); model.add(urls) }
+            if model.isRunning {
+                Notifier.shared.post("Peel is busy with another job — try again when it finishes.", fallback: showPanel)
+            } else {
+                model.clear()
+                model.add(urls)
+            }
             status.show()
             return
         }
         Task { @MainActor in
             guard let rows = await model.runQuick(slot.kind, on: urls) else {
-                Notifier.shared.post("Peel is busy with another job — try again when it finishes.")
+                Notifier.shared.post("Peel is busy with another job — try again when it finishes.", fallback: showPanel)
                 return
             }
-            Notifier.shared.post(QuickSummary.text(for: slot.kind, rows: rows))
+            // Without notification permission, the panel (which lists the results) is the feedback.
+            Notifier.shared.post(QuickSummary.text(for: slot.kind, rows: rows), fallback: showPanel)
         }
     }
 }

@@ -292,6 +292,29 @@ final class FakeLoginItem: LoginItem {
         await running.value
     }
 
+    // Review: the wheel uses default options — never the panel's Overwrite setting.
+    @Test func runQuickNeverOverwrites() async throws {
+        let model = AppModel()
+        model.force = true
+        let a = try Fixtures.makePDF(at: dir.appendingPathComponent("a.pdf"), pages: 1)
+        let b = try Fixtures.makePDF(at: dir.appendingPathComponent("b.pdf"), pages: 1)
+        let existing = try Fixtures.writeText("keep", to: dir.appendingPathComponent("a-merged.pdf"))
+        _ = await model.runQuick(.pdfMerge, on: [a, b])
+        #expect(try String(contentsOf: existing, encoding: .utf8) == "keep")
+        #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("a-merged 2.pdf").path))
+    }
+
+    @Test func runQuickResetsOptionsAndReplacesFiles() async throws {
+        let model = AppModel()
+        let old = try Fixtures.makePDF(at: dir.appendingPathComponent("old.pdf"), pages: 1)
+        model.add([old])
+        model.options.degrees = 180
+        let a = try Fixtures.makePDF(at: dir.appendingPathComponent("a.pdf"), pages: 1)
+        _ = await model.runQuick(.pdfRotate, on: [a])
+        #expect(model.files == [a])
+        #expect(model.options.degrees == 90)
+    }
+
     @Test func pinStateDefaultsOff() {
         #expect(AppModel().panelPinned == false)
     }

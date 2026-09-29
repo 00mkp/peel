@@ -64,4 +64,20 @@ import Testing
         let bad = ResultRow(inputName: "b.pdf", outputs: [], message: "can't read b.pdf", cancelled: false)
         #expect(QuickSummary.text(for: .pdfSplit, rows: [ok, bad]) == "Split PDF: 1 of 2 failed — b.pdf: can't read b.pdf")
     }
+
+    @Test func cancelledRun() {
+        let row = ResultRow(inputName: "a.pdf", outputs: [], message: nil, cancelled: true)
+        #expect(QuickSummary.text(for: .pdfMerge, rows: [row]) == "Merge PDFs: cancelled")
+    }
+}
+
+// Review I1: dropped files keep the order they were dragged in, whatever order they finish loading.
+@Suite struct OrderedURLsTests {
+    @Test func keepsDragOrder() {
+        let collector = OrderedURLs(count: 3)
+        collector.set(2, URL(fileURLWithPath: "/tmp/3.pdf"))
+        collector.set(0, URL(fileURLWithPath: "/tmp/1.pdf"))
+        collector.set(1, nil)
+        #expect(collector.urls.map(\.lastPathComponent) == ["1.pdf", "3.pdf"])
+    }
 }

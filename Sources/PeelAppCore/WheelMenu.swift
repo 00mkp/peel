@@ -93,6 +93,7 @@ public enum WheelMenu {
 /// Notification text for a wheel run.
 public enum QuickSummary {
     public static func text(for kind: ActionKind, rows: [ResultRow]) -> String {
+        if !rows.isEmpty && rows.allSatisfy(\.cancelled) { return "\(kind.title): cancelled" }
         let failed = rows.filter { !$0.succeeded && !$0.cancelled }
         if let first = failed.first {
             return "\(kind.title): \(failed.count) of \(rows.count) failed — \(first.inputName): \(first.message ?? "failed")"

@@ -54,4 +54,19 @@ import Testing
         _ = d.update(s(true, count: 2))
         #expect(d.update(s(true, shift: true, count: 3)) != nil)
     }
+
+    // Review I3: a fast flick can start the drag before the first "mouse down" tick.
+    @Test func fastDragStartedBeforeTheFirstDownSampleStillShows() {
+        var d = DragDetector()
+        _ = d.update(s(false, count: 5))
+        #expect(d.update(s(true, shift: true, count: 6)) == .showWheel(at: CGPoint(x: 10, y: 20)))
+    }
+
+    // Review: a tick between the source clearing and filling the pasteboard must not hide files for the whole drag.
+    @Test func filesAppearingLateInTheSameDragStillShow() {
+        var d = DragDetector()
+        _ = d.update(s(false, count: 5))
+        #expect(d.update(s(true, shift: true, count: 6, files: false)) == nil)
+        #expect(d.update(s(true, shift: true, count: 6, files: true)) != nil)
+    }
 }

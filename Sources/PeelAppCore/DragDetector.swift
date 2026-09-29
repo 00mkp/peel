@@ -26,23 +26,26 @@ public enum DragEvent: Equatable, Sendable {
 /// Decides when to show the action wheel: a file drag that started after the mouse went down, with
 /// Shift held at some point. Once shown it stays until the mouse is released.
 public struct DragDetector: Sendable {
-    private var wasDown = false
-    private var countAtMouseDown = 0
+    /// Drag-pasteboard change count last seen with the mouse button up. The drag pasteboard only
+    /// changes while a button is down, so any later change means a drag started in this press —
+    /// even a fast flick that began before the first "down" sample.
+    private var baseline: Int?
     private var shown = false
 
     public init() {}
 
     public mutating func update(_ sample: DragSample) -> DragEvent? {
-        defer { wasDown = sample.mouseDown }
-        if sample.mouseDown && !wasDown { countAtMouseDown = sample.dragChangeCount }
         guard sample.mouseDown else {
+            baseline = sample.dragChangeCount
             if shown {
                 shown = false
                 return .hideWheel
             }
             return nil
         }
-        if !shown && sample.shift && sample.hasFiles && sample.dragChangeCount != countAtMouseDown {
+        let base = baseline ?? sample.dragChangeCount   // first ever sample mid-press: treat as no new drag
+        if baseline == nil { baseline = base }
+        if !shown && sample.shift && sample.hasFiles && sample.dragChangeCount != base {
             shown = true
             return .showWheel(at: sample.location)
         }

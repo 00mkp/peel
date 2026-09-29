@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.wheel.start()
             self.wheel.previewIfRequested()
             Notifier.shared.onOpen = { [weak self] in self?.status.show() }
+            Notifier.shared.activate()
             if !self.pendingURLs.isEmpty {
                 self.model.add(self.pendingURLs)
                 self.pendingURLs = []
@@ -57,6 +58,7 @@ struct PeelApp: App {
     var body: some Scene {
         // Peel has no windows of its own; the status item, panel and wheel are AppKit-managed.
         Settings { EmptyView() }
+            .commands { CommandGroup(replacing: .appSettings) {} }   // no empty window on ⌘,
     }
 }
 

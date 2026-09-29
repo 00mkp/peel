@@ -158,7 +158,7 @@ public final class AppModel: ObservableObject {
 
     public func run() async {
         guard canRun, let kind = selection, let action = try? options.action(for: kind, files: files) else { return }
-        _ = await perform(action)
+        _ = await perform(action, force: force)
     }
 
     /// Runs a wheel action with default options. The files and action show in the panel too.
@@ -168,10 +168,11 @@ public final class AppModel: ObservableObject {
         files = []
         add(urls)
         selection = kind
-        return await perform(action)
+        options = ActionOptions()            // the panel shows what actually ran: defaults
+        return await perform(action, force: false)   // wheel = default options, never overwrite
     }
 
-    private func perform(_ action: PeelAction) async -> [ResultRow] {
+    private func perform(_ action: PeelAction, force: Bool) async -> [ResultRow] {
         let files = self.files
         let runner = ActionRunner(planner: OutputPlanner(force: force), locator: makeLocator())
         let token = CancelToken()
