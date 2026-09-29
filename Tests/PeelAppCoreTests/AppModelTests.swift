@@ -120,4 +120,40 @@ import TestSupport
         #expect(try Data(contentsOf: input) == before)
         #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent("a 2.png").path))
     }
+
+    // Final review I2: a value in a field that doesn't apply to the chosen action must not block Run.
+    @Test func hiddenFieldsDoNotBlockRun() throws {
+        let model = AppModel()
+        model.add([try png("a.png")])
+        model.selection = .convert(.jpg)
+        model.options.quality = "150"
+        #expect(model.validationMessage != nil)
+        model.selection = .convert(.png)
+        #expect(model.validationMessage == nil)
+        model.options.dpi = "5"
+        #expect(model.validationMessage == nil)  // dpi only applies to PDF input
+        #expect(ActionOptions.showsQuality(for: .jpg) && !ActionOptions.showsQuality(for: .png))
+    }
+
+    // Final review I1: the file list can't change under a running job (which would hide Cancel).
+    @Test func filesAreLockedWhileRunning() async throws {
+        let tools = dir.appendingPathComponent("tools")
+        try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
+        try Fixtures.makeExecutable(at: tools.appendingPathComponent("ffmpeg"), script: "exec /bin/sleep 30")
+        let clip = try Fixtures.writeText("x", to: dir.appendingPathComponent("clip.mov"))
+        let model = AppModel(locator: { ToolLocator(searchPaths: [tools.path]) })
+        model.add([clip])
+        model.selection = .mediaCompress
+        let run = Task { await model.run() }
+        while !model.isRunning { await Task.yield() }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        model.clear()
+        model.remove(clip)
+        model.add([try png("late.png")])
+        #expect(model.files == [clip])
+        #expect(model.selection == .mediaCompress)
+        model.cancel()
+        await run.value
+        #expect(model.results.first?.cancelled == true)
+    }
 }

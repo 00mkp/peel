@@ -59,18 +59,22 @@ public final class AppModel: ObservableObject {
         refreshTools()
     }
 
+    /// Adding/removing files is ignored while a job runs (the job's files and Cancel stay on screen).
     public func add(_ urls: [URL]) {
+        guard !isRunning else { return }
         for url in urls where !files.contains(url) { files.append(url) }
         results = []
         recompute()
     }
 
     public func remove(_ url: URL) {
+        guard !isRunning else { return }
         files.removeAll { $0 == url }
         recompute()
     }
 
     public func clear() {
+        guard !isRunning else { return }
         files = []
         results = []
         recompute()

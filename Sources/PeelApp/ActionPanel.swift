@@ -44,22 +44,20 @@ struct OptionsView: View {
     @EnvironmentObject private var model: AppModel
     let kind: ActionKind
 
-    private var hasPDFInput: Bool { model.files.contains { FileFormat(url: $0) == .pdf } }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             switch kind {
             case let .convert(target):
-                if [.jpg, .heic, .webp, .avif].contains(target) {
+                if ActionOptions.showsQuality(for: target) {
                     TextField("Quality 1–100 (optional)", text: $model.options.quality)
                 }
-                if target.category == .image {
+                if ActionOptions.showsSize(for: target) {
                     HStack {
                         TextField("Width px (optional)", text: $model.options.width)
                         TextField("Height px (optional)", text: $model.options.height)
                     }
                 }
-                if hasPDFInput && (target == .png || target == .jpg) {
+                if ActionOptions.showsDPI(for: target, files: model.files) {
                     TextField("Resolution (dpi)", text: $model.options.dpi)
                 }
             case .pdfSplit:

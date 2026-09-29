@@ -52,7 +52,7 @@ struct DropArea: View {
         VStack(spacing: 8) {
             Image(systemName: "tray.and.arrow.down").font(.system(size: compact ? 22 : 30))
             Text("Drop files here").font(.headline)
-            Button("Choose Files…") { choose() }
+            Button("Choose Files…") { choose() }.disabled(model.isRunning)
         }
         .frame(maxWidth: .infinity, minHeight: compact ? 90 : 130)
         .background(
@@ -78,7 +78,7 @@ struct FileList: View {
             HStack {
                 Text(model.files.count == 1 ? "1 file" : "\(model.files.count) files").font(.subheadline.bold())
                 Spacer()
-                Button("Clear") { model.clear() }.buttonStyle(.link)
+                Button("Clear") { model.clear() }.buttonStyle(.link).disabled(model.isRunning)
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -90,6 +90,7 @@ struct FileList: View {
                             Spacer()
                             Button { model.remove(url) } label: { Image(systemName: "xmark.circle.fill") }
                                 .buttonStyle(.plain).foregroundStyle(.secondary)
+                                .disabled(model.isRunning)
                         }
                     }
                 }

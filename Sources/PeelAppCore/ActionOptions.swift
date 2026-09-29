@@ -21,13 +21,24 @@ public struct ActionOptions: Equatable, Sendable {
 
     public static let audioFormats: [FileFormat] = [.mp3, .m4a, .wav, .flac, .ogg, .opus, .aiff, .wma]
 
+    // Which convert fields apply — shared by the view (what's shown) and validation (what's checked).
+    public static func showsQuality(for target: FileFormat) -> Bool { [.jpg, .heic, .webp, .avif].contains(target) }
+    public static func showsSize(for target: FileFormat) -> Bool { target.category == .image }
+    public static func showsDPI(for target: FileFormat, files: [URL]) -> Bool {
+        (target == .png || target == .jpg) && files.contains { FileFormat(url: $0) == .pdf }
+    }
+
     public func action(for kind: ActionKind, files: [URL]) throws -> PeelAction {
         switch kind {
         case let .convert(target):
-            let image = ImageOptions(quality: try optionalInt(quality, in: 1...100, "Quality must be 1–100."),
-                                     width: try optionalInt(width, in: 1...100_000, "Width must be a positive number."),
-                                     height: try optionalInt(height, in: 1...100_000, "Height must be a positive number."))
-            let resolution = try optionalInt(dpi, in: 10...1200, "Resolution must be 10–1200 dpi.") ?? 300
+            // Only fields shown for this target count; values left in hidden fields are ignored.
+            let sized = Self.showsSize(for: target)
+            let image = ImageOptions(
+                quality: Self.showsQuality(for: target) ? try optionalInt(quality, in: 1...100, "Quality must be 1–100.") : nil,
+                width: sized ? try optionalInt(width, in: 1...100_000, "Width must be a positive number.") : nil,
+                height: sized ? try optionalInt(height, in: 1...100_000, "Height must be a positive number.") : nil)
+            let resolution = Self.showsDPI(for: target, files: files)
+                ? try optionalInt(dpi, in: 10...1200, "Resolution must be 10–1200 dpi.") ?? 300 : 300
             return .convert(to: target, options: ConvertOptions(image: image, dpi: resolution))
         case .pdfMerge: return .pdfMerge
         case .pdfSplit: return .pdfSplit(ranges: try optionalRange(pages))
