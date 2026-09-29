@@ -6,6 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 # Some tests drive the real `peel` binary (e.g. Ctrl-C handling), so make sure it's current.
 swift build --product peel >/dev/null
+swift build --product PeelApp >/dev/null
 CLT=/Library/Developer/CommandLineTools/Library/Developer
 if [ ! -d /Applications/Xcode.app ] && [ -d "$CLT/Frameworks/Testing.framework" ]; then
   exec swift test \
