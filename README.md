@@ -64,6 +64,26 @@ peel formats photo.heic                           # what can this become?
 peel doctor
 ```
 
+## Finder Quick Actions
+
+`./install.sh` adds these to Finder's right-click menu (Quick Actions / Services):
+**Peel - Convert To…**, **Merge PDFs**, **Split PDF**, **Extract Here**, **Zip**.
+Results appear as notifications; problems (including a missing optional tool, with the exact
+`brew install` command) appear as dialogs. Manage them with:
+
+```bash
+peel install-quick-actions
+peel uninstall-quick-actions
+```
+
+## Peel.app
+
+`./install.sh` also builds `~/Applications/Peel.app` (or run `scripts/build-app.sh`; set `APP_DIR`
+to install elsewhere). Drop files onto its window, its menu-bar popover, or its Dock icon, pick an
+action, adjust options and press Run. Actions that need a tool you don't have are greyed out with
+the install command; Peel re-checks whenever you switch back to it. **Settings** shows every optional
+tool's status.
+
 ## Behaviour
 
 - Output goes next to the input unless you pass `-o` (a file, or a folder — end it with `/`).
@@ -71,6 +91,7 @@ peel doctor
 - Batches keep going when one file fails; the exit code is `1` if anything failed, `2` for usage errors.
 - Page ranges: `3`, `1-3,5`, `8-` (to the end), `5-3` (backwards).
 - Ctrl-C stops cleanly and leaves no half-written files.
+- Set PEEL_TOOL_PATH (colon-separated folders) to control where peel looks for optional tools.
 
 ## Development
 

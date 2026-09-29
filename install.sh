@@ -22,4 +22,11 @@ case ":$PATH:" in
 esac
 
 echo
+echo "Installing Finder Quick Actions…"
+"$BIN/peel" install-quick-actions
+
+echo
+scripts/build-app.sh
+
+echo
 "$BIN/peel" doctor || true
