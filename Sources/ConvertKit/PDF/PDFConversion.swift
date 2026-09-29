@@ -5,7 +5,7 @@ import PDFKit
 
 public struct PDFInfo: Equatable, Sendable {
     public let pageCount: Int
-    public let pageSize: CGSize
+    public let pageSize: CGSize?
     public let title: String?
     public let author: String?
     public let isEncrypted: Bool
@@ -13,11 +13,16 @@ public struct PDFInfo: Equatable, Sendable {
 
 extension PDFBackend {
     public static func info(_ input: URL) throws -> PDFInfo {
-        guard let doc = PDFDocument(url: input) else { throw PeelError.unreadableFile(input) }
+        guard looksLikePDF(input), let doc = PDFDocument(url: input) else { throw PeelError.unreadableFile(input) }
         let attributes = doc.documentAttributes ?? [:]
+        // What a viewer shows: the crop box, turned by the page's rotation. Unknown while locked.
+        let size: CGSize? = doc.isLocked ? nil : doc.page(at: 0).map { page in
+            let box = page.bounds(for: .cropBox).size
+            return page.rotation % 180 == 0 ? box : CGSize(width: box.height, height: box.width)
+        }
         return PDFInfo(
             pageCount: doc.pageCount,
-            pageSize: doc.page(at: 0)?.bounds(for: .mediaBox).size ?? .zero,
+            pageSize: size,
             title: attributes[PDFDocumentAttribute.titleAttribute] as? String,
             author: attributes[PDFDocumentAttribute.authorAttribute] as? String,
             isEncrypted: doc.isEncrypted)

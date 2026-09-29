@@ -63,13 +63,16 @@ public struct ActionRunner {
     private func perform(_ action: PeelAction, on files: [URL], cancel: CancelToken) -> [ActionOutcome] {
         var tools = ActionCatalog.requirements(for: action.kind, files: files)
         if case .mediaCompress(targetBytes: .some) = action { tools.append(.ffprobe) }
+        // Merge and zip are one job over the whole selection: early exits report one outcome.
+        let isGrouped = action == .pdfMerge || action == .zip
+        func failAll(_ error: Error) -> [ActionOutcome] {
+            isGrouped ? [ActionOutcome(input: files.first, result: .failure(error))]
+                    : files.map { ActionOutcome(input: $0, result: .failure(error)) }
+        }
         if let missing = tools.first(where: { locator.find($0) == nil }) {
-            let error = PeelError.missingTool(name: missing.rawValue, installHint: missing.installHint)
-            return files.map { ActionOutcome(input: $0, result: .failure(error)) }
+            return failAll(PeelError.missingTool(name: missing.rawValue, installHint: missing.installHint))
         }
-        if cancel.isCancelled {
-            return files.map { ActionOutcome(input: $0, result: .failure(PeelError.cancelled)) }
-        }
+        if cancel.isCancelled { return failAll(PeelError.cancelled) }
 
         switch action {
         case let .convert(target, options):

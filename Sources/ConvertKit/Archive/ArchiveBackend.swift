@@ -106,7 +106,12 @@ public enum ArchiveBackend {
                 guard !fm.fileExists(atPath: target.path) else {
                     throw PeelError.invalidArgument("two inputs are both named \(path.lastPathComponent)")
                 }
-                try fm.copyItem(at: path.resolvingSymlinksInPath(), to: target)
+                do {
+                    try fm.copyItem(at: path.resolvingSymlinksInPath(), to: target)
+                } catch {
+                    // (The raw error names peel's internal staging folder; say what the person can act on.)
+                    throw PeelError.invalidArgument("couldn't read \(path.lastPathComponent) — check that you have permission to open it")
+                }
             }
         }
 

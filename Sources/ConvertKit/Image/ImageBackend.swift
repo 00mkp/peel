@@ -63,7 +63,7 @@ public enum ImageBackend {
     }
 
     public static func resize(_ image: CGImage, width: Int, height: Int) throws -> CGImage {
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+        guard let space = rgbSpace(of: image),
               let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             throw PeelError.invalidArgument("image is too large to resize")
@@ -72,6 +72,12 @@ public enum ImageBackend {
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         guard let result = context.makeImage() else { throw PeelError.invalidArgument("image is too large to resize") }
         return result
+    }
+
+    /// The image's own RGB colour space (keeps Display P3 etc.), or sRGB for anything else.
+    static func rgbSpace(of image: CGImage) -> CGColorSpace? {
+        if let space = image.colorSpace, space.model == .rgb { return space }
+        return CGColorSpace(name: CGColorSpace.sRGB)
     }
 
     public static func convert(_ input: URL, to output: URL, format: FileFormat,
@@ -103,7 +109,11 @@ public enum ImageBackend {
                 return
             }
             let png = FileManager.default.temporaryDirectory.appendingPathComponent("peel-\(UUID().uuidString).png")
-            defer { try? FileManager.default.removeItem(at: png) }
+            InterruptCleanup.track(png)
+            defer {
+                try? FileManager.default.removeItem(at: png)
+                InterruptCleanup.untrack(png)
+            }
             try ImageEncoder.write(image, to: png, type: .png)
             if format == .webp {
                 try ProcessRunner.runChecked(encoder, ["-quiet", "-metadata", "icc", "-q", "\(options.quality ?? 85)",

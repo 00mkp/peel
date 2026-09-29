@@ -150,10 +150,14 @@ extension PDFCommand {
             do {
                 try Paths.requireExists(input)
                 let info = try PDFBackend.info(input)
-                let width = info.pageSize.width, height = info.pageSize.height
                 Console.out(Paths.display(input))
                 Console.out("  pages:      \(info.pageCount)")
-                Console.out(String(format: "  page size:  %.0f × %.0f pt (%.2f × %.2f in)", width, height, width / 72, height / 72))
+                if let size = info.pageSize {
+                    Console.out(String(format: "  page size:  %.0f × %.0f pt (%.2f × %.2f in)",
+                                       size.width, size.height, size.width / 72, size.height / 72))
+                } else {
+                    Console.out("  page size:  — (locked)")
+                }
                 Console.out("  title:      \(info.title ?? "—")")
                 Console.out("  author:     \(info.author ?? "—")")
                 Console.out("  encrypted:  \(info.isEncrypted ? "yes" : "no")")

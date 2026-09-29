@@ -5,9 +5,17 @@ import PDFKit
 public enum PDFBackend {
     /// Opens a PDF, rejecting unreadable and password-protected files.
     static func open(_ url: URL) throws -> PDFDocument {
-        guard let doc = PDFDocument(url: url) else { throw PeelError.unreadableFile(url) }
+        guard looksLikePDF(url), let doc = PDFDocument(url: url) else { throw PeelError.unreadableFile(url) }
         if doc.isLocked { throw PeelError.encryptedPDF(url) }
         return doc
+    }
+
+    /// "%PDF" near the start. Checked before PDFKit so non-PDFs fail quietly (PDFKit logs noise to stderr).
+    static func looksLikePDF(_ url: URL) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return false }
+        defer { try? handle.close() }
+        let head = (try? handle.read(upToCount: 1024)) ?? Data()
+        return head.range(of: Data("%PDF".utf8)) != nil
     }
 
     static func save(_ doc: PDFDocument, to url: URL) throws {

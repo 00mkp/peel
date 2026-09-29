@@ -78,6 +78,34 @@ public struct ProcessResult: Sendable {
     public let stdout: String
     public let stderr: String
 
+    /// Set when the tool was killed by a signal rather than exiting.
+    public var terminatedBySignal: Int32? = nil
+
+    /// Generic trailer lines ffmpeg/tar print after the real problem.
+    static let noise = [
+        "Nothing was written into output file", "Error opening output file", "Conversion failed",
+        "Error exit delayed from previous errors", "Terminating thread with return code",
+        "Task finished with error code", "Error sending frames to consumers", "Could not open encoder before EOF",
+        "Error while opening encoder", "Error while filtering", "Error marking filters as finished",
+    ]
+
+    /// The line that explains the failure: the last stderr line that isn't a generic trailer, with
+    /// ffmpeg's "[component @ 0x…]" prefixes removed and common cases put in plain words.
+    public var meaningfulErrorLine: String {
+        if stderr.contains("does not contain any stream") {
+            return "the input has nothing that fits this format (for example, a video with no audio track)"
+        }
+        let lines = stderr.split(whereSeparator: \.isNewline).map { line -> String in
+            var text = line.trimmingCharacters(in: .whitespaces)
+            while text.hasPrefix("["), let close = text.firstIndex(of: "]") {   // "[vf#0:0 @ 0x7] " prefixes
+                text = String(text[text.index(after: close)...]).trimmingCharacters(in: .whitespaces)
+            }
+            return text
+        }.filter { !$0.isEmpty }
+        let meaningful = lines.filter { line in !Self.noise.contains { line.contains($0) } }
+        return meaningful.last ?? lines.last ?? ""
+    }
+
     /// Last non-empty stderr line — usually the actual error message.
     public var lastErrorLine: String {
         stderr.split(whereSeparator: \.isNewline)
@@ -97,9 +125,12 @@ public enum ProcessRunner {
         let errURL = fm.temporaryDirectory.appendingPathComponent("peel-err-\(UUID().uuidString)")
         fm.createFile(atPath: outURL.path, contents: nil)
         fm.createFile(atPath: errURL.path, contents: nil)
+        if stdoutTo == nil { InterruptCleanup.track(outURL) }
+        InterruptCleanup.track(errURL)
         defer {
-            if stdoutTo == nil { try? fm.removeItem(at: outURL) }
+            if stdoutTo == nil { try? fm.removeItem(at: outURL); InterruptCleanup.untrack(outURL) }
             try? fm.removeItem(at: errURL)
+            InterruptCleanup.untrack(errURL)
         }
         let outHandle = try FileHandle(forWritingTo: outURL)
         let errHandle = try FileHandle(forWritingTo: errURL)
@@ -128,7 +159,8 @@ public enum ProcessRunner {
 
         let stdout = stdoutTo == nil ? String(decoding: (try? Data(contentsOf: outURL)) ?? Data(), as: UTF8.self) : ""
         let stderr = String(decoding: (try? Data(contentsOf: errURL)) ?? Data(), as: UTF8.self)
-        return ProcessResult(exitCode: process.terminationStatus, stdout: stdout, stderr: stderr)
+        let signal = process.terminationReason == .uncaughtSignal ? process.terminationStatus : nil
+        return ProcessResult(exitCode: process.terminationStatus, stdout: stdout, stderr: stderr, terminatedBySignal: signal)
     }
 
     /// Like `run`, but throws `PeelError.toolFailed` on a non-zero exit.
@@ -138,7 +170,9 @@ public enum ProcessRunner {
         let result = try run(executable, arguments, stdoutTo: stdoutTo, environment: environment)
         guard result.exitCode == 0 else {
             throw PeelError.toolFailed(name: executable.lastPathComponent, exitCode: result.exitCode,
-                                       lastLine: result.lastErrorLine, details: result.stderr)
+                                       lastLine: result.terminatedBySignal.map { "was stopped (signal \($0))" }
+                                           ?? result.meaningfulErrorLine,
+                                       details: result.stderr)
         }
         return result
     }

@@ -114,6 +114,9 @@ public enum MediaBackend {
                             locator: ToolLocator = .standard) throws {
         guard until > from else { throw PeelError.invalidArgument("end time must be after start time") }
         let ffmpeg = try locator.require(.ffmpeg)
+        if let length = try? duration(of: input, locator: locator), from >= length {
+            throw PeelError.invalidArgument("the start time is after the end of the clip (it's \(Int(length.rounded()))s long)")
+        }
         try AtomicOutput.write(to: output) { temp in
             try ProcessRunner.runChecked(ffmpeg, trimArguments(input: input, output: temp, from: from, until: until))
         }
@@ -131,7 +134,11 @@ public enum MediaBackend {
         let kbps = try videoBitrate(targetBytes: targetBytes, duration: try duration(of: input, locator: locator))
         let logDir = FileManager.default.temporaryDirectory.appendingPathComponent("peel-pass-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: logDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: logDir) }
+        InterruptCleanup.track(logDir)
+        defer {
+            try? FileManager.default.removeItem(at: logDir)
+            InterruptCleanup.untrack(logDir)
+        }
         let log = logDir.appendingPathComponent("pass").path
         let video = ["-c:v", "libx264", "-b:v", "\(kbps)k", "-pix_fmt", "yuv420p", "-vf", evenScale, "-passlogfile", log]
         try ProcessRunner.runChecked(ffmpeg, base + ["-i", input.path] + video + ["-pass", "1", "-an", "-f", "null", "/dev/null"])

@@ -41,7 +41,7 @@ public enum ImageEncoder {
 
     /// Draws `image` over opaque white — for formats without transparency (JPEG, BMP).
     public static func flattened(_ image: CGImage) throws -> CGImage {
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+        guard let space = ImageBackend.rgbSpace(of: image),
               let context = CGContext(data: nil, width: image.width, height: image.height, bitsPerComponent: 8,
                                       bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else {
             throw PeelError.invalidArgument("image is too large to process")
