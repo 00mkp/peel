@@ -14,6 +14,7 @@ final class FakeInstall: @unchecked Sendable {
     var opened: [String] = []
     var launched: [String] = []
     var quits = 0
+    var events: [String] = []
 
     init() throws {
         home = try Fixtures.tempDir()
@@ -21,7 +22,7 @@ final class FakeInstall: @unchecked Sendable {
         apps = home.appendingPathComponent("Applications")
         prefix = home.appendingPathComponent(".local")
         try FileManager.default.createDirectory(at: prefix.appendingPathComponent("bin"), withIntermediateDirectories: true)
-        try Fixtures.writeText("#!/bin/sh\n", to: prefix.appendingPathComponent("bin/peel"))
+        try Fixtures.makeExecutable(at: prefix.appendingPathComponent("bin/peel"), script: "echo 0.3.0")
     }
 
     var cli: URL { prefix.appendingPathComponent("bin/peel") }
@@ -49,10 +50,14 @@ final class FakeInstall: @unchecked Sendable {
         LifecycleEnvironment(
             home: home, services: services, defaultAppDir: apps, cli: cli,
             isAppRunning: { self.running },
-            quitApp: { self.quits += 1; self.running = false },
+            quitApp: { self.quits += 1; self.running = false; self.events.append("quit") },
             launchApp: { self.launched.append($0.path); self.running = true },
             openURL: { url in
                 self.opened.append(url.absoluteString)
+                self.events.append(url.absoluteString)
+                if FileManager.default.fileExists(atPath: PeelSupport.appState(home: self.home).path) {
+                    self.events.append("stale-state")   // the CLI should clear it so only a fresh answer counts
+                }
                 if url.absoluteString == "peel://login/off" {
                     try? KeyValueFile(["login": "off", "version": "0.3.0"]).write(to: PeelSupport.appState(home: self.home))
                 }
@@ -67,13 +72,17 @@ final class FakeInstall: @unchecked Sendable {
 }
 
 /// A minimal peel source tree whose install.sh records how it was run.
-private func makeSourceTree(in dir: URL, version: String) throws -> URL {
+private func makeSourceTree(in dir: URL, version: String, recordTo record: URL? = nil) throws -> URL {
     let tree = dir.appendingPathComponent("peel-src")
     try FileManager.default.createDirectory(at: tree, withIntermediateDirectories: true)
     try Fixtures.writeText("// swift-tools-version: 6.0\n", to: tree.appendingPathComponent("Package.swift"))
     try Fixtures.writeText(version + "\n", to: tree.appendingPathComponent("VERSION"))
-    try Fixtures.makeExecutable(at: tree.appendingPathComponent("install.sh"),
-                                script: "echo \"ran norecord=${PEEL_NO_RECORD:-0} prefix=${PREFIX:-}\" >> \"$(dirname \"$0\")/../install.log\"")
+    var script = "echo \"ran norecord=${PEEL_NO_RECORD:-0} prefix=${PREFIX:-}\" >> \"$(dirname \"$0\")/../install.log\""
+    if let record {   // like the real install.sh: record where it ran from, unless told not to
+        script += "\n[ \"${PEEL_NO_RECORD:-0}\" = 1 ] || { mkdir -p \"\(record.deletingLastPathComponent().path)\"; "
+            + "printf 'source=%s\\nversion=\(version)\\n' \"$(cd \"$(dirname \"$0\")\" && pwd)\" > \"\(record.path)\"; }"
+    }
+    try Fixtures.makeExecutable(at: tree.appendingPathComponent("install.sh"), script: script)
     return tree
 }
 
@@ -117,7 +126,7 @@ private func makeSourceTree(in dir: URL, version: String) throws -> URL {
     @Test func updateFromAnArchiveDoesNotRecordTheTempDir() throws {
         let fake = try FakeInstall()
         try fake.record(["source": "/src/peel", "version": "0.3.0"])
-        let tree = try makeSourceTree(in: fake.home, version: "0.3.1")
+        let tree = try makeSourceTree(in: fake.home, version: "0.3.1", recordTo: PeelSupport.installRecord(home: fake.home))
         let archive = fake.home.appendingPathComponent("peel-0.3.1.tar.gz")
         try ArchiveBackend.create([tree], at: archive)
         let result = fake.run(["update", archive.path])
@@ -216,5 +225,76 @@ private func makeSourceTree(in dir: URL, version: String) throws -> URL {
         let result = fake.run(["app", "start"])
         #expect(result.code == 1)
         #expect(result.stderr.contains("not installed"))
+    }
+
+    // Review I1: never delete a "peel" that isn't peel.
+    @Test func uninstallLeavesAForeignPeelBinaryAlone() throws {
+        let fake = try FakeInstall()
+        try Fixtures.makeExecutable(at: fake.cli, script: "echo 'some other tool'")
+        try fake.record(["prefix": fake.prefix.path])
+        let result = fake.run(["uninstall"])
+        #expect(FileManager.default.fileExists(atPath: fake.cli.path))
+        #expect(result.stderr.contains("isn't peel"))
+    }
+
+    // Review I2: failures are reported and exit 1.
+    @Test func uninstallReportsWhatItCouldNotRemove() throws {
+        let fake = try FakeInstall()
+        try fake.record(["prefix": fake.prefix.path])
+        let bin = fake.prefix.appendingPathComponent("bin")
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: bin.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bin.path) }
+        let result = fake.run(["uninstall"])
+        #expect(result.code == 1)
+        #expect(result.stderr.contains("could NOT remove"))
+        #expect(!result.stdout.contains("peel: uninstalled"))
+    }
+
+    // Review I3: Open at Login is turned off (confirmed fresh) before the app quits.
+    @Test func uninstallTurnsLoginOffBeforeQuitting() throws {
+        let fake = try FakeInstall()
+        try fake.installApp()
+        // A stale state file already saying "off" must not count as confirmation.
+        try KeyValueFile(["login": "off"]).write(to: PeelSupport.appState(home: fake.home))
+        fake.running = true
+        _ = fake.run(["uninstall"])
+        #expect(fake.events.prefix(2) == ["peel://login/off", "quit"])
+        #expect(!fake.events.contains("stale-state"))
+    }
+
+    @Test func uninstallTwiceIsHarmless() throws {
+        let fake = try FakeInstall()
+        try fake.record(["prefix": fake.prefix.path])
+        #expect(fake.run(["uninstall"]).code == 0)
+        let second = fake.run(["uninstall"])
+        #expect(second.code == 0)
+        #expect(second.stdout.contains("nothing to remove"))
+    }
+
+    // Review minor 2: an archive update puts the previous source back even if its installer recorded itself.
+    @Test func archiveUpdateRestoresThePreviousSource() throws {
+        let fake = try FakeInstall()
+        try fake.record(["source": "/src/peel", "version": "0.3.0"])
+        let tree = try makeSourceTree(in: fake.home.appendingPathComponent("x"), version: "0.3.1")
+        // this installer ignores PEEL_NO_RECORD and records its own (temp) directory
+        try Fixtures.makeExecutable(at: tree.appendingPathComponent("install.sh"), script: """
+            mkdir -p "\(PeelSupport.directory(home: fake.home).path)"
+            printf 'source=%s\\n' "$(cd "$(dirname "$0")" && pwd)" > "\(PeelSupport.installRecord(home: fake.home).path)"
+            """)
+        let archive = fake.home.appendingPathComponent("peel.tar.gz")
+        try ArchiveBackend.create([tree], at: archive)
+        #expect(fake.run(["update", archive.path]).code == 0)
+        #expect(KeyValueFile.read(PeelSupport.installRecord(home: fake.home))?["source"] == "/src/peel")
+    }
+
+    // Review minor 5: 'app stop' only claims success if the app really quit.
+    @Test func appStopChecksItQuit() throws {
+        let fake = try FakeInstall()
+        fake.running = true
+        var env = fake.environment
+        env.quitApp = { }   // refuses to quit
+        let result = LifecycleEnvironment.$current.withValue(env) { runPeel(["app", "stop"]) }
+        #expect(result.code == 1)
+        #expect(!result.stdout.contains("✓ Peel quit"))
     }
 }

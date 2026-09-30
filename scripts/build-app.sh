@@ -60,4 +60,6 @@ codesign --force --sign - "$APP"
 mkdir -p "$APP_DIR"
 rm -rf "$APP_DIR/Peel.app"
 mv "$APP" "$APP_DIR/Peel.app"
+# Register with LaunchServices now, so `peel app login|panel` (peel:// URLs) work before first launch.
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR/Peel.app" || true
 echo "Installed $APP_DIR/Peel.app"

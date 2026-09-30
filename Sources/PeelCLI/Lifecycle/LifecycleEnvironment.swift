@@ -80,6 +80,29 @@ struct LifecycleEnvironment {
         record["prefix"].map { URL(fileURLWithPath: $0).appendingPathComponent("bin/peel") } ?? cli
     }
 
+    /// The CLI `uninstall` removes: the recorded install, else install.sh's default — never merely
+    /// whichever binary happens to be running (that could be a build in someone's checkout).
+    var installedCLI: URL {
+        let prefix = record["prefix"].map { URL(fileURLWithPath: $0) } ?? home.appendingPathComponent(".local")
+        return prefix.appendingPathComponent("bin/peel")
+    }
+
+    /// True if `url` is a peel binary: it answers `--version` with a bare version number.
+    static func isPeelBinary(_ url: URL) -> Bool {
+        guard FileManager.default.isExecutableFile(atPath: url.path),
+              let result = try? ProcessRunner.run(url, ["--version"]), result.exitCode == 0 else { return false }
+        let answer = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        return answer.range(of: #"^\d+\.\d+\.\d+$"#, options: .regularExpression) != nil
+    }
+
+    /// Asks the app for a change through `url` and waits for its answer. The old state file is removed
+    /// first, so only a state the app writes after this request can satisfy `condition`.
+    func requestAppState(_ url: URL, until condition: (KeyValueFile) -> Bool) -> KeyValueFile? {
+        try? FileManager.default.removeItem(at: PeelSupport.appState(home: home))
+        guard openURL(url) else { return nil }
+        return waitForAppState(condition)
+    }
+
     /// Polls the app's state file until `condition` holds or the timeout passes.
     func waitForAppState(_ condition: (KeyValueFile) -> Bool) -> KeyValueFile? {
         let deadline = Date().addingTimeInterval(waitTimeout)

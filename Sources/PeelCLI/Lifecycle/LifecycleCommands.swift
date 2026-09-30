@@ -103,8 +103,7 @@ struct Update: ParsableCommand {
             if fm.fileExists(atPath: tree.appendingPathComponent(".git").path) {
                 Console.out("==> Pulling latest in \(tree.path)")
                 // --ff-only: never invent a merge commit in the user's checkout.
-                let pull = try? ProcessRunner.run(URL(fileURLWithPath: "/usr/bin/git"), ["-C", tree.path, "pull", "--ff-only"])
-                guard pull?.exitCode == 0 else {
+                guard Self.runStreaming(URL(fileURLWithPath: "/usr/bin/git"), ["-C", tree.path, "pull", "--ff-only"]) == 0 else {
                     Console.err("peel: git pull failed; resolve it in \(tree.path) and retry")
                     return 1
                 }
@@ -133,14 +132,15 @@ struct Update: ParsableCommand {
         if tempDir != nil { environment["PEEL_NO_RECORD"] = "1" }
 
         Console.out("==> Installing from \(tree.path)")
-        let result = try? ProcessRunner.run(URL(fileURLWithPath: "/bin/bash"), [installer.path], environment: environment)
-        guard let result, result.exitCode == 0 else {
-            Console.err("peel: install failed; the previous version may still be in place")
-            let tail = (result?.stderr ?? "").split(whereSeparator: \.isNewline).suffix(5)
-            tail.forEach { Console.err("  " + $0) }
+        // The build takes minutes: let its output through rather than sitting silent.
+        guard Self.runStreaming(URL(fileURLWithPath: "/bin/bash"), [installer.path], environment: environment) == 0 else {
+            Console.err("peel: install failed (see the output above); the previous version may still be in place")
             return 1
         }
-        if tempDir != nil, var updated = KeyValueFile.read(PeelSupport.installRecord(home: env.home)) {
+        if tempDir != nil {
+            // Belt and braces: whatever that installer recorded, keep pointing at the previous source.
+            var updated = KeyValueFile.read(PeelSupport.installRecord(home: env.home)) ?? record
+            updated["source"] = record["source"]
             updated["version"] = after
             try? updated.write(to: PeelSupport.installRecord(home: env.home))
         }
@@ -149,7 +149,24 @@ struct Update: ParsableCommand {
             env.launchApp(env.appURL)
         }
         Console.out("peel: updated \(before) -> \(after)")
+        if let appVersion = env.installedAppVersion, appVersion != after {
+            Console.err("peel: warning: Peel.app reports \(appVersion), expected \(after)")
+        }
         return 0
+    }
+
+    /// Runs a tool with the terminal as its stdout/stderr; returns its exit code (-1 if it couldn't start).
+    static func runStreaming(_ executable: URL, _ arguments: [String], environment: [String: String] = [:]) -> Int32 {
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = arguments
+        process.standardInput = FileHandle.nullDevice
+        if !environment.isEmpty {
+            process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, new in new }
+        }
+        guard (try? process.run()) != nil else { return -1 }
+        process.waitUntilExit()
+        return process.terminationStatus
     }
 }
 
@@ -163,35 +180,61 @@ struct Uninstall: ParsableCommand {
         let fm = FileManager.default
         let record = env.record
         var removed = 0
+        var failed: [String] = []
 
-        if env.installedAppVersion != nil, env.openURL(URL(string: "peel://login/off")!) {
-            _ = env.waitForAppState { $0["login"] == "off" }   // so no dangling login item is left behind
+        func remove(_ url: URL, as label: String) {
+            do {
+                try fm.removeItem(at: url)
+                Console.out("✓ removed \(label)")
+                removed += 1
+            } catch {
+                failed.append("\(label): \(error.localizedDescription)")
+            }
         }
-        if env.isAppRunning() { env.quitApp() }
 
-        for bundle in WorkflowGenerator.installedBundles(in: env.services) where (try? fm.removeItem(at: bundle)) != nil {
-            removed += 1
+        if env.installedAppVersion != nil {
+            // Turn the login item off first (confirmed by a fresh answer), so none is left dangling.
+            if env.requestAppState(URL(string: "peel://login/off")!, until: { $0["login"] == "off" }) == nil {
+                failed.append("Open at Login: Peel didn't confirm it was turned off — check System Settings → General → Login Items")
+            }
         }
-        if removed > 0 { Console.out("✓ removed \(removed) Finder Quick Actions") }
+        if env.isAppRunning() {
+            env.quitApp()
+            if env.isAppRunning() { failed.append("Peel.app is still running — quit it from the menu bar and rerun") }
+        }
+
+        let bundles = WorkflowGenerator.installedBundles(in: env.services)
+        var actionsRemoved = 0
+        for bundle in bundles {
+            do { try fm.removeItem(at: bundle); actionsRemoved += 1 } catch {
+                failed.append("\(bundle.path): \(error.localizedDescription)")
+            }
+        }
+        if actionsRemoved > 0 { Console.out("✓ removed \(actionsRemoved) Finder Quick Actions"); removed += actionsRemoved }
         if env.services == QuickActionPaths.services { QuickActionPaths.refreshServicesMenu() }
 
-        if env.installedAppVersion != nil, (try? fm.removeItem(at: env.appURL)) != nil {
-            Console.out("✓ removed \(env.appURL.path)")
-            removed += 1
-        }
-        let cli = env.cliPath
-        if fm.fileExists(atPath: cli.path), (try? fm.removeItem(at: cli)) != nil {
-            Console.out("✓ removed \(cli.path)")
-            removed += 1
+        if env.installedAppVersion != nil { remove(env.appURL, as: env.appURL.path) }
+
+        let cli = env.installedCLI
+        if fm.fileExists(atPath: cli.path) {
+            if LifecycleEnvironment.isPeelBinary(cli) {
+                remove(cli, as: cli.path)
+            } else {
+                Console.err("peel: left \(cli.path) alone — it isn't peel")
+            }
         }
         let support = PeelSupport.directory(home: env.home)
-        if fm.fileExists(atPath: support.path), (try? fm.removeItem(at: support)) != nil {
-            Console.out("✓ removed peel's settings (\(support.path))")
-            removed += 1
-        }
-        env.deletePreferences()
+        if fm.fileExists(atPath: support.path) { remove(support, as: "peel's settings (\(support.path))") }
+        if !env.isAppRunning() { env.deletePreferences() }   // a running app would write them straight back
 
-        if removed == 0 { Console.out("peel: nothing to remove (already uninstalled)") } else { Console.out("peel: uninstalled") }
+        if !failed.isEmpty {
+            failed.forEach { Console.err("peel: could NOT remove \($0)") }
+            if let source = record["source"], !source.isEmpty {
+                Console.err("  your source checkout at \(source) was left in place")
+            }
+            throw ExitCode(1)
+        }
+        Console.out(removed == 0 ? "peel: nothing to remove (already uninstalled)" : "peel: uninstalled")
         if let source = record["source"], !source.isEmpty {
             Console.out("  your source checkout at \(source) was left in place")
         }
@@ -229,6 +272,10 @@ extension AppCommand {
                 return
             }
             env.quitApp()
+            guard !env.isAppRunning() else {
+                Console.err("peel: Peel didn't quit — quit it from its menu-bar icon")
+                throw ExitCode(1)
+            }
             Console.out("✓ Peel quit")
         }
     }
@@ -250,11 +297,13 @@ extension AppCommand {
 
         func run() throws {
             let env = LifecycleEnvironment.current
-            guard env.openURL(URL(string: "peel://login/\(setting.rawValue)")!) else {
+            guard env.installedAppVersion != nil else {
                 Console.err("peel: couldn't reach Peel.app — is it installed? (peel status)")
                 throw ExitCode(1)
             }
-            let state = env.waitForAppState { [setting.rawValue, "needs-approval"].contains($0["login"] ?? "") }
+            let state = env.requestAppState(URL(string: "peel://login/\(setting.rawValue)")!) {
+                [setting.rawValue, "needs-approval"].contains($0["login"] ?? "")
+            }
             switch state?["login"] {
             case setting.rawValue?:
                 Console.out("✓ Open at Login is \(setting.rawValue)")

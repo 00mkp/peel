@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Builds peel in release mode and installs it to $PREFIX/bin (default ~/.local/bin).
 set -euo pipefail
+PREFIX="${PREFIX:-$HOME/.local}"
+case "$PREFIX" in /*) ;; *) PREFIX="$(pwd)/$PREFIX" ;; esac   # relative to where you ran it; the record must hold absolute paths
+APP_DIR="${APP_DIR:-$HOME/Applications}"
+case "$APP_DIR" in /*) ;; *) APP_DIR="$(pwd)/$APP_DIR" ;; esac
+export APP_DIR
 cd "$(dirname "$0")"
 
-PREFIX="${PREFIX:-$HOME/.local}"
 BIN="$PREFIX/bin"
 
 echo "Building peel (release)…"
@@ -34,7 +38,7 @@ if [ "${PEEL_NO_RECORD:-0}" != "1" ]; then
   RECORD_DIR="$HOME/Library/Application Support/peel"
   mkdir -p "$RECORD_DIR"
   {
-    echo "app_dir=${APP_DIR:-$HOME/Applications}"
+    echo "app_dir=$APP_DIR"
     echo "prefix=$PREFIX"
     echo "source=$(pwd)"
     echo "version=$(tr -d '[:space:]' < VERSION)"
