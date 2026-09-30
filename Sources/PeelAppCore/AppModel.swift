@@ -55,6 +55,13 @@ public final class AppModel: ObservableObject {
     @Published public var force = false
     /// Keep the menu-bar panel open when clicking elsewhere (for dragging files in from Finder).
     @Published public var panelPinned = false
+    /// The panel shows Settings instead of the main flow.
+    @Published public var showingSettings = false
+
+    /// The panel always opens on the main flow, whatever it was showing when it closed.
+    public func panelWillOpen() {
+        showingSettings = false
+    }
     @Published public private(set) var isRunning = false
     @Published public private(set) var results: [ResultRow] = []
     @Published public private(set) var tools: [ToolStatus] = []

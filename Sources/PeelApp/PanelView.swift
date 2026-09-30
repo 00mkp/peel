@@ -5,15 +5,14 @@ import SwiftUI
 /// Everything in the menu-bar panel: header, then either the main flow or Settings.
 struct PanelView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var showingSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(showingSettings ? "Settings" : "Peel").font(.headline)
+                Text(model.showingSettings ? "Settings" : "Peel").font(.headline)
                 Spacer()
-                if showingSettings {
-                    Button("Done") { showingSettings = false }
+                if model.showingSettings {
+                    Button("Done") { model.showingSettings = false }
                 } else {
                     Button {
                         model.panelPinned.toggle()
@@ -23,7 +22,7 @@ struct PanelView: View {
                     .buttonStyle(.borderless)
                     .help(model.panelPinned ? "Unpin: close when clicking elsewhere" : "Pin: keep open while you drag files in")
                     Menu {
-                        Button("Settings…") { showingSettings = true }
+                        Button("Settings…") { model.showingSettings = true }
                         Button("About Peel") { dismissThen(LifecycleActions.about) }
                         Button("Check for Updates…") { dismissThen(LifecycleActions.checkForUpdates) }
                         Divider()
@@ -36,7 +35,7 @@ struct PanelView: View {
                     .fixedSize()
                 }
             }
-            if showingSettings {
+            if model.showingSettings {
                 ToolsView()
             } else {
                 MainView()

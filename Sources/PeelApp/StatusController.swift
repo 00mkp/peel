@@ -1,10 +1,14 @@
 import AppKit
-import Combine
 import PeelAppCore
 import SwiftUI
 
 /// The menu-bar icon and its panel. Clicking the icon toggles the panel. (Dropping onto the icon was
 /// removed: dragging to the top of the screen brings up Stage Manager; Shift-drag covers that need.)
+///
+/// Peel decides when the panel closes, rather than NSPopover's `.transient` mode: a click in another
+/// app or switching away closes it, unless it's pinned. (`.transient` stopped closing on outside clicks
+/// after Settings → Done, and it closes on the very click that lands on the icon, which needed a
+/// timing workaround to stop that click reopening it.)
 @MainActor
 final class StatusController: NSObject, NSPopoverDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -12,9 +16,8 @@ final class StatusController: NSObject, NSPopoverDelegate {
     private var fallback: NSPanel?
     private let model: AppModel
     private let makeContent: () -> AnyView
-    private var pinWatch: AnyCancellable?
-    private var lastClosed = Date.distantPast
     private var outsideClicks: Any?
+    private var resignWatch: NSObjectProtocol?
 
     init(model: AppModel, content: @escaping () -> AnyView) {
         self.model = model
@@ -23,7 +26,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
         let host = NSHostingController(rootView: content())
         host.sizingOptions = [.preferredContentSize]
         popover.contentViewController = host
-        popover.behavior = .transient
+        popover.behavior = .applicationDefined
         popover.animates = true
         popover.delegate = self
         if let button = item.button {
@@ -32,43 +35,43 @@ final class StatusController: NSObject, NSPopoverDelegate {
             button.action = #selector(buttonPressed)
             button.setAccessibilityLabel("Peel")
         }
-        pinWatch = model.$panelPinned.sink { [weak self] pinned in
-            self?.popover.behavior = pinned ? .applicationDefined : .transient
-        }
     }
 
     @objc private func buttonPressed() { toggle() }
 
     func toggle() {
-        if popover.isShown {
-            popover.performClose(nil)
-        } else if Date().timeIntervalSince(lastClosed) > 0.3 {
-            // (A transient popover closes itself on the same click that lands on the icon;
-            // without this check that click would reopen it straight away.)
-            show()
-        }
-    }
-
-    func popoverDidClose(_ notification: Notification) {
-        lastClosed = Date()
-        if let outsideClicks { NSEvent.removeMonitor(outsideClicks) }
-        outsideClicks = nil
+        if popover.isShown { close() } else { show() }
     }
 
     func close() {
         if popover.isShown { popover.performClose(nil) }
     }
 
-    /// A transient popover can stop closing on outside clicks after its content swaps (Settings → Done),
-    /// so don't rely on it: any click in another app closes the panel unless it's pinned.
-    private func watchOutsideClicks() {
-        guard outsideClicks == nil else { return }
+    func popoverDidShow(_ notification: Notification) {
+        stopWatching()
         outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self, !self.model.panelPinned else { return }
-                self.close()
-            }
+            MainActor.assumeIsolated { self?.closeUnlessPinned() }
         }
+        resignWatch = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
+                                                             object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.closeUnlessPinned() }
+        }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        stopWatching()
+    }
+
+    private func stopWatching() {
+        if let outsideClicks { NSEvent.removeMonitor(outsideClicks) }
+        if let resignWatch { NotificationCenter.default.removeObserver(resignWatch) }
+        outsideClicks = nil
+        resignWatch = nil
+    }
+
+    /// Clicks in Peel's own windows (the panel, the wheel, the icon) never reach the global monitor.
+    private func closeUnlessPinned() {
+        if !model.panelPinned { close() }
     }
 
     /// Shows the panel under the icon, or — when the icon is hidden in the menu-bar overflow —
@@ -77,9 +80,9 @@ final class StatusController: NSObject, NSPopoverDelegate {
         NSApp.activate(ignoringOtherApps: true)
         if let button = item.button, iconIsOnScreen(button) {
             fallback?.close()
+            if !popover.isShown { model.panelWillOpen() }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
-            watchOutsideClicks()
         } else {
             showFallback()
         }
@@ -105,6 +108,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
             }
             fallback = panel
         }
+        if fallback?.isVisible == false { model.panelWillOpen() }
         fallback?.makeKeyAndOrderFront(nil)
     }
 }

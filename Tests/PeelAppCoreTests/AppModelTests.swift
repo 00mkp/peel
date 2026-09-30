@@ -319,6 +319,13 @@ final class FakeLoginItem: LoginItem {
         #expect(AppModel().panelPinned == false)
     }
 
+    @MainActor @Test func panelReopensOnTheMainView() {
+        let model = AppModel(loginItem: FakeLoginItem())
+        model.showingSettings = true
+        model.panelWillOpen()
+        #expect(!model.showingSettings)
+    }
+
     @MainActor @Test func noticesItWasJustUpdated() throws {
         let state = try Fixtures.tempDir().appendingPathComponent("app-state.conf")
         #expect(AppModel(loginItem: FakeLoginItem(), stateFile: state).updatedFrom == nil)          // first launch
