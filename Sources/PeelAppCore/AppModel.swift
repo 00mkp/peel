@@ -66,13 +66,30 @@ public final class AppModel: ObservableObject {
 
     private let makeLocator: () -> ToolLocator
     private let loginItem: LoginItem
+    private let stateFile: URL?
     private var token: CancelToken?
 
-    public init(locator: @escaping () -> ToolLocator = { .standard }, loginItem: LoginItem = SystemLoginItem()) {
+    /// `stateFile`: where to publish version + Open at Login for `peel status` (the app passes the real
+    /// path; tests leave it nil so nothing is written).
+    public init(locator: @escaping () -> ToolLocator = { .standard }, loginItem: LoginItem = SystemLoginItem(),
+                stateFile: URL? = nil) {
         makeLocator = locator
         self.loginItem = loginItem
+        self.stateFile = stateFile
         launchAtLogin = loginItem.isEnabled
         refreshTools()
+        publishState()
+    }
+
+    /// What `peel status` / `peel app login` read back.
+    public var stateValues: [String: String] {
+        ["version": PeelVersion.current,
+         "login": loginItemNeedsApproval ? "needs-approval" : (launchAtLogin ? "on" : "off")]
+    }
+
+    private func publishState() {
+        guard let stateFile else { return }
+        try? KeyValueFile(stateValues).write(to: stateFile)
     }
 
     public func setLaunchAtLogin(_ on: Bool) {
@@ -93,6 +110,7 @@ public final class AppModel: ObservableObject {
     public func refreshLoginItem() {
         launchAtLogin = loginItem.isEnabled
         loginItemNeedsApproval = loginItem.needsApproval
+        publishState()
     }
 
     public var availableEntries: [CatalogEntry] { entries.filter(\.isAvailable) }

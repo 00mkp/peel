@@ -1,3 +1,4 @@
+import ConvertKit
 import Testing
 @testable import PeelCLI
 
@@ -5,7 +6,7 @@ import Testing
     @Test func versionExitsZero() {
         let result = runPeel(["--version"])
         #expect(result.code == 0)
-        #expect(result.stdout.contains("0.2.0"))
+        #expect(result.stdout.contains(PeelVersion.current))
     }
 
     @Test func unknownArgumentIsUsageError() {
