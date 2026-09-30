@@ -297,4 +297,58 @@ private func makeSourceTree(in dir: URL, version: String, recordTo record: URL? 
         #expect(result.code == 1)
         #expect(!result.stdout.contains("✓ Peel quit"))
     }
+
+    // MARK: update --check
+
+    private func git(_ args: [String], in dir: URL) throws {
+        let result = try ProcessRunner.run(URL(fileURLWithPath: "/usr/bin/git"),
+                                           ["-C", dir.path, "-c", "user.name=t", "-c", "user.email=t@t"] + args)
+        #expect(result.exitCode == 0, "git \(args): \(result.stderr)")
+    }
+
+    /// An upstream repo and a checkout of it (the recorded source), both at `version`.
+    private func makeGitSource(_ fake: FakeInstall, version: String) throws -> (upstream: URL, source: URL) {
+        let seed = try makeSourceTree(in: fake.home.appendingPathComponent("seed"), version: version)
+        try git(["init", "-q", "-b", "master"], in: seed)
+        try git(["add", "-A"], in: seed)
+        try git(["commit", "-qm", "v\(version)"], in: seed)
+        let upstream = fake.home.appendingPathComponent("upstream.git")
+        try git(["clone", "-q", "--bare", seed.path, upstream.path], in: fake.home)
+        let source = fake.home.appendingPathComponent("src")
+        try git(["clone", "-q", upstream.path, source.path], in: fake.home)
+        try fake.record(["source": source.path, "version": version])
+        return (upstream, source)
+    }
+
+    @Test func updateCheckWhenUpToDate() throws {
+        let fake = try FakeInstall()
+        _ = try makeGitSource(fake, version: PeelVersion.current)
+        let result = fake.run(["update", "--check"])
+        #expect(result.code == 0)
+        #expect(result.stdout.contains("peel: up to date (\(PeelVersion.current))"))
+    }
+
+    @Test func updateCheckSeesNewCommitsWithoutInstalling() throws {
+        let fake = try FakeInstall()
+        let (upstream, _) = try makeGitSource(fake, version: PeelVersion.current)
+        let other = fake.home.appendingPathComponent("other")
+        try git(["clone", "-q", upstream.path, other.path], in: fake.home)
+        try Fixtures.writeText("9.9.9\n", to: other.appendingPathComponent("VERSION"))
+        try git(["commit", "-qam", "bump"], in: other)
+        try git(["push", "-q"], in: other)
+        let result = fake.run(["update", "--check"])
+        #expect(result.code == 0)
+        #expect(result.stdout.contains("peel: update available: \(PeelVersion.current) -> 9.9.9 (1 new commit)"))
+        #expect(!FileManager.default.fileExists(atPath: fake.home.appendingPathComponent("install.log").path))
+    }
+
+    @Test func updateCheckNeedsAGitSource() throws {
+        let fake = try FakeInstall()
+        let tree = try makeSourceTree(in: fake.home, version: "0.3.0")
+        try fake.record(["source": tree.path])
+        let result = fake.run(["update", "--check"])
+        #expect(result.code == 1)
+        #expect(result.stderr.contains("can't check for updates"))
+        #expect(fake.run(["update", "--check", tree.path]).code == 2)
+    }
 }

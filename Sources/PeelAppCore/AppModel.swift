@@ -67,6 +67,8 @@ public final class AppModel: ObservableObject {
     private let makeLocator: () -> ToolLocator
     private let loginItem: LoginItem
     private let stateFile: URL?
+    /// The version that ran before this launch, when it differs (i.e. Peel was just updated).
+    public let updatedFrom: String?
     private var token: CancelToken?
 
     /// `stateFile`: where to publish version + Open at Login for `peel status` (the app passes the real
@@ -76,6 +78,8 @@ public final class AppModel: ObservableObject {
         makeLocator = locator
         self.loginItem = loginItem
         self.stateFile = stateFile
+        let previous = stateFile.flatMap(KeyValueFile.read)?["version"]
+        updatedFrom = previous.flatMap { $0 == PeelVersion.current ? nil : $0 }
         launchAtLogin = loginItem.isEnabled
         refreshTools()
         publishState()

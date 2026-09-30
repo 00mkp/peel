@@ -14,6 +14,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
     private let makeContent: () -> AnyView
     private var pinWatch: AnyCancellable?
     private var lastClosed = Date.distantPast
+    private var outsideClicks: Any?
 
     init(model: AppModel, content: @escaping () -> AnyView) {
         self.model = model
@@ -50,6 +51,24 @@ final class StatusController: NSObject, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         lastClosed = Date()
+        if let outsideClicks { NSEvent.removeMonitor(outsideClicks) }
+        outsideClicks = nil
+    }
+
+    func close() {
+        if popover.isShown { popover.performClose(nil) }
+    }
+
+    /// A transient popover can stop closing on outside clicks after its content swaps (Settings → Done),
+    /// so don't rely on it: any click in another app closes the panel unless it's pinned.
+    private func watchOutsideClicks() {
+        guard outsideClicks == nil else { return }
+        outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, !self.model.panelPinned else { return }
+                self.close()
+            }
+        }
     }
 
     /// Shows the panel under the icon, or — when the icon is hidden in the menu-bar overflow —
@@ -60,6 +79,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
             fallback?.close()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
+            watchOutsideClicks()
         } else {
             showFallback()
         }

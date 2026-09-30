@@ -20,6 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.wheel.previewIfRequested()
             Notifier.shared.onOpen = { [weak self] in self?.status.show() }
             Notifier.shared.activate()
+            if let previous = self.model.updatedFrom {
+                Notifier.shared.post("Peel updated: \(previous) → \(PeelVersion.current)") {}
+            }
             if !self.pendingURLs.isEmpty || self.showPanelAtLaunch {
                 self.model.add(self.pendingURLs)
                 self.pendingURLs = []

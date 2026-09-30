@@ -318,4 +318,13 @@ final class FakeLoginItem: LoginItem {
     @Test func pinStateDefaultsOff() {
         #expect(AppModel().panelPinned == false)
     }
+
+    @MainActor @Test func noticesItWasJustUpdated() throws {
+        let state = try Fixtures.tempDir().appendingPathComponent("app-state.conf")
+        #expect(AppModel(loginItem: FakeLoginItem(), stateFile: state).updatedFrom == nil)          // first launch
+        #expect(AppModel(loginItem: FakeLoginItem(), stateFile: state).updatedFrom == nil)          // same version again
+        try KeyValueFile(["version": "0.0.1", "login": "off"]).write(to: state)
+        #expect(AppModel(loginItem: FakeLoginItem(), stateFile: state).updatedFrom == "0.0.1")
+        #expect(KeyValueFile.read(state)?["version"] == PeelVersion.current)
+    }
 }

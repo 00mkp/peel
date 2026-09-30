@@ -24,7 +24,10 @@ struct PanelView: View {
                     .help(model.panelPinned ? "Unpin: close when clicking elsewhere" : "Pin: keep open while you drag files in")
                     Menu {
                         Button("Settings…") { showingSettings = true }
+                        Button("About Peel") { dismissThen(LifecycleActions.about) }
+                        Button("Check for Updates…") { dismissThen(LifecycleActions.checkForUpdates) }
                         Divider()
+                        Button("Uninstall Peel…") { dismissThen(LifecycleActions.uninstall) }
                         Button("Quit Peel") { NSApp.terminate(nil) }
                     } label: {
                         Image(systemName: "gearshape")
@@ -44,5 +47,11 @@ struct PanelView: View {
         .padding(12)
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Closes the panel first, so the About panel or an alert isn't left underneath it.
+    private func dismissThen(_ action: @escaping @MainActor () -> Void) {
+        (NSApp.delegate as? AppDelegate)?.status.close()
+        DispatchQueue.main.async { action() }
     }
 }

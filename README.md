@@ -98,6 +98,7 @@ peel doctor
 peel status                 version, install source, Quick Actions, app, Open at Login, tools
 peel update                 pull the latest source, rebuild, reinstall (CLI, Quick Actions, app)
 peel update <dir|archive>   update from a directory or .tar.gz/.tgz/.zip instead
+peel update --check         just say whether there's anything new
 peel uninstall              remove the app (and its login item), Quick Actions, the CLI and settings
 peel app start|stop         launch or quit the menu-bar app
 peel app panel              open the menu-bar panel
@@ -133,7 +134,8 @@ window and no Dock icon.
 - **Menu-bar panel:** click the icon, then drop files into the panel (or use **Choose Files…**). Pick
   an action, set options (pages, sizes, formats…), press Run. The **pin** keeps the panel open while
   you drag files in from Finder.
-- The **gear** has **Settings…** (optional tools, **Open at Login**) and **Quit Peel**.
+- The **gear** has **Settings…** (optional tools, **Open at Login**), **About Peel**, **Check for Updates…**,
+  **Uninstall Peel…** and **Quit Peel**. Update and Uninstall run `peel update` / `peel uninstall` for you.
 - "Open With → Peel" or opening Peel again also opens the panel.
 - The first time, macOS may ask to allow Peel's notifications and, for the wheel, to let Peel read
   what's being dragged. Actions that need a tool you don't have are listed separately with the

@@ -46,9 +46,44 @@ struct Update: ParsableCommand {
     @Argument(help: "A peel source directory or .tar.gz/.tgz/.zip archive (default: the recorded source).")
     var from: String?
 
+    @Flag(help: "Only check the recorded source's upstream for new commits; install nothing.")
+    var check = false
+
+    func validate() throws {
+        if check && from != nil { throw ValidationError("--check looks at the recorded source; drop the path") }
+    }
+
     func run() throws {
-        let code = Self.update(from, env: LifecycleEnvironment.current)
+        let code = check ? Self.check(env: LifecycleEnvironment.current) : Self.update(from, env: LifecycleEnvironment.current)
         if code != 0 { throw ExitCode(code) }
+    }
+
+    /// Prints "peel: up to date (X)" or "peel: update available: X -> Y (N new commits)".
+    static func check(env: LifecycleEnvironment) -> Int32 {
+        let gitTool = URL(fileURLWithPath: "/usr/bin/git")
+        guard let source = env.record["source"], !source.isEmpty,
+              FileManager.default.fileExists(atPath: URL(fileURLWithPath: source).appendingPathComponent(".git").path) else {
+            Console.err("peel: can't check for updates: no git checkout recorded as the source")
+            Console.err("  clone https://github.com/00mkp/peel.git and run ./install.sh from it")
+            return 1
+        }
+        func git(_ args: [String]) -> String? {
+            guard let result = try? ProcessRunner.run(gitTool, ["-C", source] + args), result.exitCode == 0 else { return nil }
+            return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard git(["fetch", "--quiet"]) != nil, let count = git(["rev-list", "--count", "HEAD..@{u}"]).flatMap({ Int($0) }) else {
+            Console.err("peel: can't check for updates: git fetch failed in \(source) (offline, or no upstream branch?)")
+            return 1
+        }
+        let installed = env.record["version"] ?? PeelVersion.current
+        if count == 0 {
+            Console.out("peel: up to date (\(installed))")
+        } else {
+            let latest = git(["show", "@{u}:VERSION"]) ?? "?"
+            Console.out("peel: update available: \(installed) -> \(latest) (\(count) new commit\(count == 1 ? "" : "s"))")
+            Console.out("  run: peel update")
+        }
+        return 0
     }
 
     static func update(_ given: String?, env: LifecycleEnvironment) -> Int32 {
