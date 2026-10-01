@@ -142,6 +142,9 @@ window and no Dock icon.
 - The first time, macOS may ask to allow peel's notifications and, for the wheel, to let peel read
   what's being dragged. Actions that need a tool you don't have are listed separately with the
   install command; peel re-checks whenever you come back to it.
+- If peel's icon shows as a blank square somewhere (System Settings' menu-bar list, for example),
+  that's macOS's icon cache. Clear it with
+  `sudo rm -rf /Library/Caches/com.apple.iconservices.store; killall Dock` and reopen that window.
 
 ## Behaviour
 
