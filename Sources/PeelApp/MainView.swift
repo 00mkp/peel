@@ -46,7 +46,7 @@ struct DropArea: View {
         VStack(spacing: 8) {
             Image(systemName: "tray.and.arrow.down").font(.system(size: compact ? 22 : 30))
             Text("Drop files here").font(.headline)
-            Button("Choose Files…") { choose() }.disabled(model.isRunning)
+            Button("Choose Files…") { chooseFiles(into: model) }.disabled(model.isRunning).help("Choose Files… (⌘O)")
         }
         .padding(.vertical, compact ? 16 : 24)
         .frame(maxWidth: .infinity)
@@ -57,12 +57,16 @@ struct DropArea: View {
         )
     }
 
-    private func choose() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = true
-        if panel.runModal() == .OK { model.add(panel.urls) }
-    }
+}
+
+/// The Choose Files… dialog (the button and ⌘O).
+@MainActor
+func chooseFiles(into model: AppModel) {
+    guard !model.isRunning else { return }
+    let panel = NSOpenPanel()
+    panel.allowsMultipleSelection = true
+    panel.canChooseDirectories = true
+    if panel.runModal() == .OK { model.add(panel.urls) }
 }
 
 struct FileList: View {

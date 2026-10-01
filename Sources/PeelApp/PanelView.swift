@@ -12,7 +12,7 @@ struct PanelView: View {
                 Text(model.showingSettings ? "Settings" : "peel").font(.headline)
                 Spacer()
                 if model.showingSettings {
-                    Button("Done") { model.showingSettings = false }
+                    Button("Done") { model.showingSettings = false }.help("Done (Esc)")
                 } else {
                     Button {
                         model.panelPinned.toggle()
@@ -22,12 +22,13 @@ struct PanelView: View {
                     .buttonStyle(.borderless)
                     .help(model.panelPinned ? "Unpin: close when clicking elsewhere" : "Pin: keep open while you drag files in")
                     Menu {
-                        Button("Settings…") { model.showingSettings = true }
+                        // Shortcuts are handled by StatusController; these show them beside the items.
+                        Button("Settings…") { model.showingSettings = true }.keyboardShortcut(",")
                         Button("About peel") { dismissThen(LifecycleActions.about) }
                         Button("Check for Updates…") { dismissThen(LifecycleActions.checkForUpdates) }
                         Divider()
                         Button("Uninstall peel…") { dismissThen(LifecycleActions.uninstall) }
-                        Button("Quit peel") { NSApp.terminate(nil) }
+                        Button("Quit peel") { NSApp.terminate(nil) }.keyboardShortcut("q")
                     } label: {
                         Image(systemName: "gearshape")
                     }

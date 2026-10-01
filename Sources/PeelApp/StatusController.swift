@@ -18,6 +18,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
     private let makeContent: () -> AnyView
     private var outsideClicks: Any?
     private var resignWatch: NSObjectProtocol?
+    private var keyMonitor: Any?
 
     init(model: AppModel, content: @escaping () -> AnyView) {
         self.model = model
@@ -35,6 +36,45 @@ final class StatusController: NSObject, NSPopoverDelegate {
             button.action = #selector(buttonPressed)
             button.setAccessibilityLabel("peel")
         }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let key = event.charactersIgnoringModifiers ?? "", flags = event.modifierFlags, window = event.windowNumber
+            let handled = MainActor.assumeIsolated {   // local monitors run on the main thread
+                self?.handleKey(key, modifiers: flags, windowNumber: window) ?? false
+            }
+            return handled ? nil : event
+        }
+    }
+
+    /// Panel shortcuts (see PanelShortcut). Only while the panel is the key window; a handled key is
+    /// consumed so nothing else acts on it too.
+    private func handleKey(_ key: String, modifiers: NSEvent.ModifierFlags, windowNumber: Int) -> Bool {
+        guard let window = NSApp.window(withWindowNumber: windowNumber),
+              window === popover.contentViewController?.view.window || window === fallback,
+              let shortcut = PanelShortcut(key: key, modifiers: modifiers,
+                                           editingText: window.firstResponder is NSText) else { return false }
+        switch shortcut {
+        case .chooseFiles:
+            model.showingSettings = false
+            chooseFiles(into: model)
+        case .run:
+            if !model.showingSettings { Task { await model.run() } }
+        case .clear:
+            if !model.showingSettings { model.clear() }
+        case .settings:
+            model.showingSettings = true
+        case .close:
+            closePanel()
+        case .quit:
+            NSApp.terminate(nil)
+        case .escape:
+            if !model.handleEscape() { closePanel() }
+        }
+        return true
+    }
+
+    private func closePanel() {
+        close()
+        fallback?.close()
     }
 
     @objc private func buttonPressed() { toggle() }

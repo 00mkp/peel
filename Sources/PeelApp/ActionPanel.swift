@@ -39,6 +39,7 @@ struct ActionPanel: View {
                     Button("Cancel") { model.cancel() }
                 } else {
                     Button("Run") { Task { await model.run() } }
+                        .help("Run (⌘↩)")
                         .keyboardShortcut(.defaultAction)
                         .disabled(!model.canRun)
                 }

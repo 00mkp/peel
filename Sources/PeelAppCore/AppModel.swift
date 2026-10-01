@@ -58,6 +58,14 @@ public final class AppModel: ObservableObject {
     /// The panel shows Settings instead of the main flow.
     @Published public var showingSettings = false
 
+    /// Esc: back from Settings to the main view. Returns false when there's nothing to go back from
+    /// (the panel should close instead).
+    public func handleEscape() -> Bool {
+        guard showingSettings else { return false }
+        showingSettings = false
+        return true
+    }
+
     /// The panel always opens on the main flow, whatever it was showing when it closed.
     public func panelWillOpen() {
         showingSettings = false

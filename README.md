@@ -138,6 +138,8 @@ window and no Dock icon.
   you drag files in from Finder.
 - The **gear** has **Settings…** (optional tools, **Open at Login**), **About peel**, **Check for Updates…**,
   **Uninstall peel…** and **Quit peel**. Update and Uninstall run `peel update` / `peel uninstall` for you.
+- **Shortcuts** while the panel is open: ⌘O Choose Files…, ⌘↩ Run, ⌘⌫ clear the list, ⌘, Settings,
+  Esc back from Settings (or close), ⌘W close, ⌘Q quit.
 - "Open With → peel" or opening peel again also opens the panel.
 - The first time, macOS may ask to allow peel's notifications and, for the wheel, to let peel read
   what's being dragged. Actions that need a tool you don't have are listed separately with the
