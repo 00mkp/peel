@@ -72,6 +72,10 @@ final class StatusController: NSObject, NSPopoverDelegate {
         return true
     }
 
+    private lazy var gearMenu = GearMenu(model: model) { [weak self] in self?.closePanel() }
+
+    func showGearMenu() { gearMenu.show() }
+
     private func closePanel() {
         close()
         fallback?.close()

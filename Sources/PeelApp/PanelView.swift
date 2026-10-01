@@ -21,19 +21,13 @@ struct PanelView: View {
                     }
                     .buttonStyle(.borderless)
                     .help(model.panelPinned ? "Unpin: close when clicking elsewhere" : "Pin: keep open while you drag files in")
-                    Menu {
-                        // Shortcuts are handled by StatusController; these show them beside the items.
-                        Button("Settings…") { model.showingSettings = true }.keyboardShortcut(",")
-                        Button("About peel") { dismissThen(LifecycleActions.about) }
-                        Button("Check for Updates…") { dismissThen(LifecycleActions.checkForUpdates) }
-                        Divider()
-                        Button("Uninstall peel…") { dismissThen(LifecycleActions.uninstall) }
-                        Button("Quit peel") { NSApp.terminate(nil) }.keyboardShortcut("q")
+                    Button {
+                        (NSApp.delegate as? AppDelegate)?.status.showGearMenu()
                     } label: {
                         Image(systemName: "gearshape")
                     }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
+                    .buttonStyle(.borderless)
+                    .help("Settings, updates and more")
                 }
             }
             if model.showingSettings {
@@ -47,11 +41,5 @@ struct PanelView: View {
         .padding(12)
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
-    }
-
-    /// Closes the panel first, so the About panel or an alert isn't left underneath it.
-    private func dismissThen(_ action: @escaping @MainActor () -> Void) {
-        (NSApp.delegate as? AppDelegate)?.status.close()
-        DispatchQueue.main.async { action() }
     }
 }
