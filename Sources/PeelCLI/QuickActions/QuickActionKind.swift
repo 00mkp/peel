@@ -8,6 +8,18 @@ public enum QuickActionKind: String, CaseIterable, ExpressibleByArgument, Sendab
     case extractHere = "extract-here"
     case zip
 
+    /// The icon beside it in Finder's Quick Actions menu. Finder only draws AppKit's named images
+    /// (SF Symbols and image files show blank or generic), so these come from that set.
+    public var iconName: String {
+        switch self {
+        case .convert: return "NSTouchBarRefreshTemplate"        // circular arrows
+        case .merge: return "NSTouchBarAddTemplate"              // plus
+        case .split: return "NSTouchBarIconViewTemplate"         // grid of pages
+        case .extractHere: return "NSTouchBarDownloadTemplate"   // arrow into a tray
+        case .zip: return "NSTouchBarFolderTemplate"             // folder
+        }
+    }
+
     /// The title in Finder's Quick Actions / Services menu.
     public var menuTitle: String {
         switch self {

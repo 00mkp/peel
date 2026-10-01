@@ -1,3 +1,4 @@
+import AppKit
 import ConvertKit
 import Foundation
 import Testing
@@ -67,8 +68,15 @@ import TestSupport
         let info = dir.appendingPathComponent(QuickActionKind.merge.bundleName).appendingPathComponent("Contents/Info.plist")
         let plist = try PropertyListSerialization.propertyList(from: Data(contentsOf: info), format: nil) as? [String: Any]
         let service = (plist?["NSServices"] as? [[String: Any]])?.first
-        #expect(service?["NSIconName"] as? String == "NSActionTemplate")
+        #expect(service?["NSIconName"] as? String == QuickActionKind.merge.iconName)
         #expect(service?["NSBackgroundColorName"] as? String == "background")
+    }
+
+    // Finder only shows AppKit's named images (not SF Symbols or image files), so each must exist.
+    @Test func everyQuickActionHasItsOwnSystemIcon() {
+        let names = QuickActionKind.allCases.map(\.iconName)
+        #expect(Set(names).count == names.count)
+        for name in names { #expect(NSImage(named: name) != nil, "\(name) isn't a system image") }
     }
 
     // Review Focus 5: apostrophes in the peel path are quoted safely.
