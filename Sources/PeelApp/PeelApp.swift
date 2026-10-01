@@ -5,6 +5,7 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor let model = AppModel(stateFile: PeelSupport.appState())
+    @MainActor let shortcut = GlobalShortcut()
     @MainActor private(set) var status: StatusController!
     @MainActor private(set) var wheel: WheelController!
     private var pendingURLs: [URL] = []
@@ -13,8 +14,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             self.status = StatusController(model: self.model) { [unowned self] in
-                AnyView(PanelView(showGearMenu: { [unowned self] in self.status.showGearMenu() }).environmentObject(self.model))
+                AnyView(PanelView(showGearMenu: { [unowned self] in self.status.showGearMenu() })
+                    .environmentObject(self.model).environmentObject(self.shortcut))
             }
+            self.shortcut.start { [unowned self] in self.status.toggle() }   // ⌃⌥P from any app
             self.wheel = WheelController(model: self.model, status: self.status)
             self.wheel.start()
             self.wheel.previewIfRequested()

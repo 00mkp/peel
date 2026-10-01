@@ -9,6 +9,7 @@ struct ToolsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             LoginToggle()
+            ShortcutToggle()
             Divider()
             Text("Optional tools").font(.headline)
             Text("PDF tools, most image formats, subtitles, zip and tar work without them.")
@@ -55,6 +56,21 @@ struct LoginToggle: View {
             }
             if model.loginItemNeedsApproval {
                 Button("Open Login Items Settings") { SystemLoginItem.openSettings() }
+            }
+        }
+    }
+}
+
+/// "Open the panel with ⌃⌥P" — a system-wide shortcut, on by default.
+struct ShortcutToggle: View {
+    @EnvironmentObject private var shortcut: GlobalShortcut
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Toggle("Open the panel with \(GlobalShortcut.label) from any app",
+                   isOn: Binding(get: { shortcut.isEnabled }, set: { shortcut.setEnabled($0) }))
+            if let error = shortcut.error {
+                Text(error).font(.caption).foregroundStyle(.orange)
             }
         }
     }
