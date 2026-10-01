@@ -79,6 +79,10 @@ enum WorkflowGenerator {
     private static func info(for kind: QuickActionKind) -> [String: Any] {
         [
             "NSServices": [[
+                // The icon keys are what Automator writes for a Quick Action; without them Finder
+                // files the workflow under Services instead of Quick Actions.
+                "NSIconName": "NSActionTemplate",
+                "NSBackgroundColorName": "background",
                 "NSMenuItem": ["default": kind.menuTitle],
                 "NSMessage": "runWorkflowAsService",
                 "NSRequiredContext": ["NSApplicationIdentifier": "com.apple.finder"],

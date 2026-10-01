@@ -114,7 +114,9 @@ app and the CLI share the same engine.
 `./install.sh` adds these to Finder's right-click menu (Quick Actions / Services):
 **peel - Convert To…**, **Merge PDFs**, **Split PDF**, **Extract Here**, **Zip**.
 Results appear as notifications; problems (including a missing optional tool, with the exact
-`brew install` command) appear as dialogs. Manage them with:
+`brew install` command) appear as dialogs. If they show up under **Services** rather than
+**Quick Actions**, switch them on in System Settings → General → Login Items & Extensions → Finder.
+Manage them with:
 
 ```bash
 peel install-quick-actions

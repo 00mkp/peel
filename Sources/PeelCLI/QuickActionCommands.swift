@@ -46,7 +46,10 @@ struct InstallQuickActions: ParsableCommand {
             }
         }
         if dir == nil { QuickActionPaths.refreshServicesMenu() }
-        if installed > 0 { Console.out("Right-click files in Finder → Quick Actions → peel - …") }
+        if installed > 0 {
+            Console.out("Right-click files in Finder → Quick Actions → peel - …")
+            Console.out("(under Services instead? switch them on in System Settings → General → Login Items & Extensions → Finder)")
+        }
         if failed > 0 { throw ExitCode(1) }
     }
 }

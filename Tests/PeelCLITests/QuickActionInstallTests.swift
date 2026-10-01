@@ -61,6 +61,16 @@ import TestSupport
         #expect(plist?[WorkflowGenerator.infoKey] as? String == "convert")
     }
 
+    // Like Automator's Quick Actions: with an icon, Finder lists them under Quick Actions, not Services.
+    @Test func declaresAQuickActionIcon() throws {
+        _ = install()
+        let info = dir.appendingPathComponent(QuickActionKind.merge.bundleName).appendingPathComponent("Contents/Info.plist")
+        let plist = try PropertyListSerialization.propertyList(from: Data(contentsOf: info), format: nil) as? [String: Any]
+        let service = (plist?["NSServices"] as? [[String: Any]])?.first
+        #expect(service?["NSIconName"] as? String == "NSActionTemplate")
+        #expect(service?["NSBackgroundColorName"] as? String == "background")
+    }
+
     // Review Focus 5: apostrophes in the peel path are quoted safely.
     @Test func quotesAwkwardPeelPaths() throws {
         let script = WorkflowGenerator.script(for: .zip, peel: URL(fileURLWithPath: "/tmp/it's here/peel"))
