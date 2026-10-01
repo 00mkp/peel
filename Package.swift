@@ -8,6 +8,7 @@ let package = Package(
         .executable(name: "peel", targets: ["peel"]),
         .library(name: "ConvertKit", targets: ["ConvertKit"]),
         .executable(name: "PeelApp", targets: ["PeelApp"]),
+        .executable(name: "peel-icon", targets: ["peel-icon"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
@@ -25,6 +26,7 @@ let package = Package(
         .testTarget(name: "ConvertKitTests", dependencies: ["ConvertKit", "TestSupport"]),
         .target(name: "PeelAppCore", dependencies: ["ConvertKit"]),
         .executableTarget(name: "PeelApp", dependencies: ["PeelAppCore"]),
+        .executableTarget(name: "peel-icon", dependencies: ["PeelAppCore"]),
         .testTarget(name: "PeelAppCoreTests", dependencies: ["PeelAppCore", "ConvertKit", "TestSupport"]),
         .testTarget(name: "PeelCLITests", dependencies: ["PeelCLI", "ConvertKit", "TestSupport"]),
     ],

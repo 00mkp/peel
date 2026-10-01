@@ -9,7 +9,7 @@ struct PanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(model.showingSettings ? "Settings" : "Peel").font(.headline)
+                Text(model.showingSettings ? "Settings" : "peel").font(.headline)
                 Spacer()
                 if model.showingSettings {
                     Button("Done") { model.showingSettings = false }
@@ -23,11 +23,11 @@ struct PanelView: View {
                     .help(model.panelPinned ? "Unpin: close when clicking elsewhere" : "Pin: keep open while you drag files in")
                     Menu {
                         Button("Settings…") { model.showingSettings = true }
-                        Button("About Peel") { dismissThen(LifecycleActions.about) }
+                        Button("About peel") { dismissThen(LifecycleActions.about) }
                         Button("Check for Updates…") { dismissThen(LifecycleActions.checkForUpdates) }
                         Divider()
-                        Button("Uninstall Peel…") { dismissThen(LifecycleActions.uninstall) }
-                        Button("Quit Peel") { NSApp.terminate(nil) }
+                        Button("Uninstall peel…") { dismissThen(LifecycleActions.uninstall) }
+                        Button("Quit peel") { NSApp.terminate(nil) }
                     } label: {
                         Image(systemName: "gearshape")
                     }

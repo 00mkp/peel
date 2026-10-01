@@ -1,3 +1,3 @@
 import PeelCLI
 
-Peel.runMain()
+PeelRoot.runMain()

@@ -6,7 +6,7 @@ struct Doctor: ParsableCommand {
     static let configuration = CommandConfiguration(abstract: "Check which optional tools are installed.")
 
     static func report(locator: ToolLocator) -> [String] {
-        var lines = ["peel \(Peel.configuration.version)", ""]
+        var lines = ["peel \(PeelRoot.configuration.version)", ""]
         let brew = "Homebrew".padding(toLength: 13, withPad: " ", startingAt: 0)
         lines.append(locator.homebrew.map { "✓ \(brew)\($0.path)" }
                      ?? "✗ \(brew)not found → \(ToolLocator.homebrewMissingNote)")

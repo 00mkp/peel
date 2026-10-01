@@ -6,12 +6,12 @@ conversion is also a CLI command); add terminal commands to manage peel itself, 
 ## Commands
 ```
 peel status                 version; install record (source, git commit); CLI path; Quick Actions
-                            installed (n/5); Peel.app path + version; app running; Open at Login;
+                            installed (n/5); peel.app path + version; app running; Open at Login;
                             optional tools summary
 peel update                 git pull --ff-only the recorded source, rerun its install.sh
 peel update <dir|archive>   install from a directory or .tar.gz/.tgz/.zip instead
-peel uninstall              quit Peel.app (turning Open at Login off first), remove Quick Actions,
-                            Peel.app, the CLI and peel's records/preferences
+peel uninstall              quit peel.app (turning Open at Login off first), remove Quick Actions,
+                            peel.app, the CLI and peel's records/preferences
 peel app start|stop         launch / quit the menu-bar app
 peel app panel              open the menu-bar panel
 peel app login on|off       Open at Login, from the terminal
@@ -28,7 +28,7 @@ peel app login on|off       Open at Login, from the terminal
   `peel app …` opens those URLs (LaunchServices starts the app if needed). The app writes
   `~/Library/Application Support/peel/app-state.conf` (`version`, `login`) at launch and on change, which
   `peel status` reads. (A CLI process can't query another app's SMAppService login item.)
-- `peel update` relaunches Peel.app afterwards if it was running.
+- `peel update` relaunches peel.app afterwards if it was running.
 - All lifecycle logic takes injectable paths/actions so tests run against temp dirs and never touch
   the real install, app or login item.
 

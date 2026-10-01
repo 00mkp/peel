@@ -11,11 +11,11 @@ public enum QuickActionKind: String, CaseIterable, ExpressibleByArgument, Sendab
     /// The title in Finder's Quick Actions / Services menu.
     public var menuTitle: String {
         switch self {
-        case .convert: return "Peel - Convert To…"
-        case .merge: return "Peel - Merge PDFs"
-        case .split: return "Peel - Split PDF"
-        case .extractHere: return "Peel - Extract Here"
-        case .zip: return "Peel - Zip"
+        case .convert: return "peel - Convert To…"
+        case .merge: return "peel - Merge PDFs"
+        case .split: return "peel - Split PDF"
+        case .extractHere: return "peel - Extract Here"
+        case .zip: return "peel - Zip"
         }
     }
 

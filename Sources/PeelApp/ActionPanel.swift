@@ -126,7 +126,7 @@ struct InstallHelpView: View {
             }
             .padding(8)
             .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.12)))
-            Text("Run it in Terminal, then come back — Peel re-checks automatically.")
+            Text("Run it in Terminal, then come back — peel re-checks automatically.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

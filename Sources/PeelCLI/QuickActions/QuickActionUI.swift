@@ -27,17 +27,17 @@ struct OsascriptUI: QuickActionUI {
 
     func choose(prompt: String, items: [String]) -> String? {
         let list = "{" + items.map(Self.literal).joined(separator: ", ") + "}"
-        let answer = run("choose from list \(list) with title \"Peel\" with prompt \(Self.literal(prompt))")
+        let answer = run("choose from list \(list) with title \"peel\" with prompt \(Self.literal(prompt))")
         return answer == nil || answer == "false" ? nil : answer
     }
 
     func notify(_ message: String) {
-        _ = run("display notification \(Self.literal(message)) with title \"Peel\"")
+        _ = run("display notification \(Self.literal(message)) with title \"peel\"")
     }
 
     func alert(_ message: String, copyable: String?) {
         let buttons = copyable == nil ? "{\"OK\"}" : "{\"Copy Command\", \"OK\"}"
-        let answer = run("display dialog \(Self.literal(message)) buttons \(buttons) default button \"OK\" with title \"Peel\" with icon caution")
+        let answer = run("display dialog \(Self.literal(message)) buttons \(buttons) default button \"OK\" with title \"peel\" with icon caution")
         if let copyable, answer?.contains("Copy Command") == true {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(copyable, forType: .string)

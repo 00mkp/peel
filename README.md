@@ -33,7 +33,7 @@ Requires macOS 13+ and Xcode or the Swift command-line tools.
 
 ```bash
 git clone https://github.com/00mkp/peel.git && cd peel
-./install.sh     # CLI → ~/.local/bin, Finder Quick Actions, and ~/Applications/Peel.app
+./install.sh     # CLI → ~/.local/bin, Finder Quick Actions, and ~/Applications/peel.app
                  # (override with PREFIX=/usr/local ./install.sh or APP_DIR=/Applications ./install.sh)
 ```
 
@@ -112,7 +112,7 @@ app and the CLI share the same engine.
 ## Finder Quick Actions
 
 `./install.sh` adds these to Finder's right-click menu (Quick Actions / Services):
-**Peel - Convert To…**, **Merge PDFs**, **Split PDF**, **Extract Here**, **Zip**.
+**peel - Convert To…**, **Merge PDFs**, **Split PDF**, **Extract Here**, **Zip**.
 Results appear as notifications; problems (including a missing optional tool, with the exact
 `brew install` command) appear as dialogs. Manage them with:
 
@@ -121,10 +121,10 @@ peel install-quick-actions
 peel uninstall-quick-actions
 ```
 
-## Peel.app
+## peel.app
 
-`./install.sh` also builds `~/Applications/Peel.app` (or run `scripts/build-app.sh`; set `APP_DIR`
-to install elsewhere). Peel lives only in the menu bar — look for the peel-twist icon. There is no
+`./install.sh` also builds `~/Applications/peel.app` (or run `scripts/build-app.sh`; set `APP_DIR`
+to install elsewhere). peel lives only in the menu bar — look for the peel-twist icon. There is no
 window and no Dock icon.
 
 - **Action wheel:** select files in Finder (or anywhere), start dragging, and hold **Shift** — a
@@ -134,12 +134,12 @@ window and no Dock icon.
 - **Menu-bar panel:** click the icon, then drop files into the panel (or use **Choose Files…**). Pick
   an action, set options (pages, sizes, formats…), press Run. The **pin** keeps the panel open while
   you drag files in from Finder.
-- The **gear** has **Settings…** (optional tools, **Open at Login**), **About Peel**, **Check for Updates…**,
-  **Uninstall Peel…** and **Quit Peel**. Update and Uninstall run `peel update` / `peel uninstall` for you.
-- "Open With → Peel" or opening Peel again also opens the panel.
-- The first time, macOS may ask to allow Peel's notifications and, for the wheel, to let Peel read
+- The **gear** has **Settings…** (optional tools, **Open at Login**), **About peel**, **Check for Updates…**,
+  **Uninstall peel…** and **Quit peel**. Update and Uninstall run `peel update` / `peel uninstall` for you.
+- "Open With → peel" or opening peel again also opens the panel.
+- The first time, macOS may ask to allow peel's notifications and, for the wheel, to let peel read
   what's being dragged. Actions that need a tool you don't have are listed separately with the
-  install command; Peel re-checks whenever you come back to it.
+  install command; peel re-checks whenever you come back to it.
 
 ## Behaviour
 

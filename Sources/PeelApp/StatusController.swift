@@ -5,7 +5,7 @@ import SwiftUI
 /// The menu-bar icon and its panel. Clicking the icon toggles the panel. (Dropping onto the icon was
 /// removed: dragging to the top of the screen brings up Stage Manager; Shift-drag covers that need.)
 ///
-/// Peel decides when the panel closes, rather than NSPopover's `.transient` mode: a click in another
+/// peel decides when the panel closes, rather than NSPopover's `.transient` mode: a click in another
 /// app or switching away closes it, unless it's pinned. (`.transient` stopped closing on outside clicks
 /// after Settings → Done, and it closes on the very click that lands on the icon, which needed a
 /// timing workaround to stop that click reopening it.)
@@ -33,7 +33,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
             button.image = PeelIcon.menuBarImage()
             button.target = self                        // VoiceOver / keyboard menu-bar navigation
             button.action = #selector(buttonPressed)
-            button.setAccessibilityLabel("Peel")
+            button.setAccessibilityLabel("peel")
         }
     }
 
@@ -69,7 +69,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
         resignWatch = nil
     }
 
-    /// Clicks in Peel's own windows (the panel, the wheel, the icon) never reach the global monitor.
+    /// Clicks in peel's own windows (the panel, the wheel, the icon) never reach the global monitor.
     private func closeUnlessPinned() {
         if !model.panelPinned { close() }
     }
@@ -98,7 +98,7 @@ final class StatusController: NSObject, NSPopoverDelegate {
             let host = NSHostingController(rootView: makeContent())
             host.sizingOptions = [.preferredContentSize]
             let panel = NSPanel(contentViewController: host)
-            panel.title = "Peel"
+            panel.title = "peel"
             panel.styleMask = [.titled, .closable, .utilityWindow]
             panel.level = .floating
             panel.isReleasedWhenClosed = false

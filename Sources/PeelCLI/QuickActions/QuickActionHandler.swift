@@ -51,7 +51,7 @@ struct QuickActionHandler {
             return false
         }
         guard !entries.isEmpty else {
-            ui.alert("Peel can't convert this selection — these files have no format in common to convert to.", copyable: nil)
+            ui.alert("peel can't convert this selection — these files have no format in common to convert to.", copyable: nil)
             return 1
         }
         let ordered = entries.filter(\.isAvailable) + entries.filter { !$0.isAvailable }
@@ -106,7 +106,7 @@ struct QuickActionHandler {
             let message = (error as? PeelError)?.errorDescription ?? error.localizedDescription
             return grouped ? message : "\(input?.lastPathComponent ?? "selection"): \(message)"
         }
-        let header = outputs.isEmpty ? "Peel couldn't finish:" : "\(verb) \(outputs.count) \(noun), but some failed:"
+        let header = outputs.isEmpty ? "peel couldn't finish:" : "\(verb) \(outputs.count) \(noun), but some failed:"
         ui.alert(([header] + lines).joined(separator: "\n"), copyable: nil)
         return 1
     }

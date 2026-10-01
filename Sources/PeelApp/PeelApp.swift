@@ -21,7 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Notifier.shared.onOpen = { [weak self] in self?.status.show() }
             Notifier.shared.activate()
             if let previous = self.model.updatedFrom {
-                Notifier.shared.post("Peel updated: \(previous) → \(PeelVersion.current)") {}
+                Notifier.shared.post("peel updated: \(previous) → \(PeelVersion.current)") {}
             }
             if !self.pendingURLs.isEmpty || self.showPanelAtLaunch {
                 self.model.add(self.pendingURLs)
@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// "Open With" / files dropped on Peel in Finder: load them into the panel. `peel://` URLs are
+    /// "Open With" / files dropped on peel in Finder: load them into the panel. `peel://` URLs are
     /// commands from the CLI (`peel app login on|off`, `peel app panel`).
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
@@ -50,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Opening Peel again (Finder, Spotlight) shows the panel.
+    /// Opening peel again (Finder, Spotlight) shows the panel.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         Task { @MainActor in self.status?.show() }
         return false
@@ -71,7 +71,7 @@ struct PeelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        // Peel has no windows of its own; the status item, panel and wheel are AppKit-managed.
+        // peel has no windows of its own; the status item, panel and wheel are AppKit-managed.
         Settings { EmptyView() }
             .commands { CommandGroup(replacing: .appSettings) {} }   // no empty window on ⌘,
     }

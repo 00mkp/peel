@@ -26,7 +26,7 @@ final class FakeInstall: @unchecked Sendable {
     }
 
     var cli: URL { prefix.appendingPathComponent("bin/peel") }
-    var app: URL { apps.appendingPathComponent("Peel.app") }
+    var app: URL { apps.appendingPathComponent("peel.app") }
 
     func installApp(version: String = "0.3.0") throws {
         let contents = app.appendingPathComponent("Contents")
@@ -98,7 +98,7 @@ private func makeSourceTree(in dir: URL, version: String, recordTo record: URL? 
         #expect(result.code == 0)
         #expect(result.stdout.contains("peel \(PeelVersion.current)"))
         #expect(result.stdout.contains("quick actions:  5 of 5 installed"))
-        #expect(result.stdout.contains("Peel.app (0.3.0), running"))
+        #expect(result.stdout.contains("peel.app (0.3.0), running"))
         #expect(result.stdout.contains("open at login:  on"))
         #expect(result.stdout.contains("source:         /src/peel"))
     }
@@ -295,7 +295,7 @@ private func makeSourceTree(in dir: URL, version: String, recordTo record: URL? 
         env.quitApp = { }   // refuses to quit
         let result = LifecycleEnvironment.$current.withValue(env) { runPeel(["app", "stop"]) }
         #expect(result.code == 1)
-        #expect(!result.stdout.contains("✓ Peel quit"))
+        #expect(!result.stdout.contains("✓ peel quit"))
     }
 
     // MARK: update --check

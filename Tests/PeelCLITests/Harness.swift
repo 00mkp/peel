@@ -22,7 +22,7 @@ func runPeel(_ arguments: [String]) -> CLIResult {
     let out = Lines()
     let err = Lines()
     let code = Console.$current.withValue(Console(out: { out.append($0) }, err: { err.append($0) })) {
-        Peel.execute(arguments)
+        PeelRoot.execute(arguments)
     }
     return CLIResult(code: code, out: out.all, err: err.all)
 }

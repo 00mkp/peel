@@ -20,6 +20,18 @@ import TestSupport
         return parameters?["COMMAND_STRING"] as? String ?? ""
     }
 
+    // Renaming "Peel - …" to "peel - …": on a case-insensitive disk the old bundle is the same path.
+    @Test func reinstallRenamesWorkflowsThatDifferOnlyInCase() throws {
+        #expect(install().code == 0)
+        let old = dir.appendingPathComponent("Peel - Zip.workflow")
+        try FileManager.default.moveItem(at: dir.appendingPathComponent(QuickActionKind.zip.bundleName),
+                                         to: dir.appendingPathComponent("tmp.workflow"))
+        try FileManager.default.moveItem(at: dir.appendingPathComponent("tmp.workflow"), to: old)
+        #expect(install().code == 0)
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path).filter { $0.lowercased().hasSuffix("zip.workflow") }
+        #expect(names == [QuickActionKind.zip.bundleName])
+    }
+
     @Test func installsFiveValidWorkflows() throws {
         #expect(install().code == 0)
         let bundles = WorkflowGenerator.installedBundles(in: dir).map(\.lastPathComponent).sorted()
@@ -45,7 +57,7 @@ import TestSupport
         let info = dir.appendingPathComponent(QuickActionKind.convert.bundleName).appendingPathComponent("Contents/Info.plist")
         let plist = try PropertyListSerialization.propertyList(from: Data(contentsOf: info), format: nil) as? [String: Any]
         let services = plist?["NSServices"] as? [[String: Any]]
-        #expect((services?.first?["NSMenuItem"] as? [String: String])?["default"] == "Peel - Convert To…")
+        #expect((services?.first?["NSMenuItem"] as? [String: String])?["default"] == "peel - Convert To…")
         #expect(plist?[WorkflowGenerator.infoKey] as? String == "convert")
     }
 

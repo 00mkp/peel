@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds Peel.app from the PeelApp target and installs it to $APP_DIR (default ~/Applications).
+# Builds peel.app from the PeelApp target and installs it to $APP_DIR (default ~/Applications).
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-$HOME/Applications}"
@@ -7,15 +7,18 @@ case "$APP_DIR" in /*) ;; *) APP_DIR="$PWD/$APP_DIR" ;; esac   # relative to whe
 cd "$(dirname "$0")/.."
 VERSION="$(tr -d '[:space:]' < VERSION)"
 
-echo "Building Peel.app (release)…"
+echo "Building peel.app (release)…"
 swift build -c release --product PeelApp
+swift build -c release --product peel-icon
 BIN="$(swift build -c release --show-bin-path)/PeelApp"
 
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-APP="$STAGE/Peel.app"
+APP="$STAGE/peel.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/Peel"
+cp "$BIN" "$APP/Contents/MacOS/peel"
+"$(swift build -c release --show-bin-path)/peel-icon" "$STAGE/peel.iconset"
+iconutil -c icns "$STAGE/peel.iconset" -o "$APP/Contents/Resources/peel.icns"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -23,11 +26,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
   <key>CFBundleDevelopmentRegion</key><string>en</string>
-  <key>CFBundleDisplayName</key><string>Peel</string>
-  <key>CFBundleExecutable</key><string>Peel</string>
+  <key>CFBundleDisplayName</key><string>peel</string>
+  <key>CFBundleExecutable</key><string>peel</string>
+  <key>CFBundleIconFile</key><string>peel</string>
   <key>CFBundleIdentifier</key><string>dev.peel.app</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-  <key>CFBundleName</key><string>Peel</string>
+  <key>CFBundleName</key><string>peel</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>
@@ -58,8 +62,8 @@ PLIST
 
 codesign --force --sign - "$APP"
 mkdir -p "$APP_DIR"
-rm -rf "$APP_DIR/Peel.app"
-mv "$APP" "$APP_DIR/Peel.app"
+rm -rf "$APP_DIR/peel.app"
+mv "$APP" "$APP_DIR/peel.app"
 # Register with LaunchServices now, so `peel app login|panel` (peel:// URLs) work before first launch.
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR/Peel.app" || true
-echo "Installed $APP_DIR/Peel.app"
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_DIR/peel.app" || true
+echo "Installed $APP_DIR/peel.app"

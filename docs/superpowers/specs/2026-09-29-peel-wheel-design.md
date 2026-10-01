@@ -5,7 +5,7 @@
 
 ## 1. Purpose
 
-Make Peel cognitively lightweight: no standalone window, no Dock icon. Two surfaces only:
+Make peel cognitively lightweight: no standalone window, no Dock icon. Two surfaces only:
 
 1. **Action wheel** — drag files anywhere (Finder, Desktop…), hold **Shift**, and a wheel of one-step
    actions appears at the cursor. Drop on an action to run it; a notification reports the result.
@@ -22,13 +22,13 @@ Make Peel cognitively lightweight: no standalone window, no Dock icon. Two surfa
 - A macOS permission prompt, if needed, is acceptable.
 
 ### Success criteria
-1. No Peel window exists except the panel (popover), a fallback floating panel when the menu-bar
+1. No peel window exists except the panel (popover), a fallback floating panel when the menu-bar
    icon is hidden, and the wheel overlay. No Dock icon ever (LSUIElement).
 2. Shift while dragging files shows a wheel of ≤ 6 available one-step actions for those files plus
    **More…**; dropping runs the action with default options and posts a notification (success or
    the failure message). Releasing without dropping on a slot does nothing.
 3. Dropping files on the menu-bar icon opens the panel with them loaded. The panel can be pinned
-   (stays open when clicking elsewhere). Opening Peel again / "Open With" opens the panel.
+   (stays open when clicking elsewhere). Opening peel again / "Open With" opens the panel.
 4. Settings (tools, Open at Login) and Quit are inside the panel's gear menu.
 5. All non-UI logic (drag detection state machine, wheel slot choice, quick-run, notification text)
    is unit-tested; the AppKit/SwiftUI shell builds and is smoke-tested by launching.
@@ -62,7 +62,7 @@ MP4, MP3, M4A, WebP, HEIC, GIF, TXT, VTT, SRT, then others), Rotate. Take up to 
 ### 2.3 Quick run
 `AppModel.runQuick(kind, on:)` loads the files into the panel state (files + selection) and runs
 the default action, so results also appear in the panel. Busy → returns nil and the wheel posts
-"Peel is busy". `QuickSummary.text(for:rows:)` produces notification text: "Merged → a-merged.pdf",
+"peel is busy". `QuickSummary.text(for:rows:)` produces notification text: "Merged → a-merged.pdf",
 "Converted 3 files", or "Couldn't finish: a.pdf: can't read …".
 
 ### 2.4 Shell (AppKit)

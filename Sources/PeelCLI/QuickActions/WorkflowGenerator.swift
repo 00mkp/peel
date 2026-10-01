@@ -20,13 +20,13 @@ enum WorkflowGenerator {
         lines += [
             "OSA=\"${PEEL_OSASCRIPT:-/usr/bin/osascript}\"",
             "if [ ! -x \"$P\" ]; then",
-            "  \"$OSA\" -e 'display dialog \"The peel command-line tool was not found. Re-run install.sh from the peel folder.\" buttons {\"OK\"} default button 1 with title \"Peel\" with icon caution'",
+            "  \"$OSA\" -e 'display dialog \"The peel command-line tool was not found. Re-run install.sh from the peel folder.\" buttons {\"OK\"} default button 1 with title \"peel\" with icon caution'",
             "  exit 0",
             "fi",
             "\"$P\" quick-action \(kind.rawValue) \"$@\"",
             "rc=$?",
             "if [ $rc -ge 128 ]; then",
-            "  \"$OSA\" -e 'display dialog \"Peel quit unexpectedly while running this Quick Action.\" buttons {\"OK\"} default button 1 with title \"Peel\" with icon stop'",
+            "  \"$OSA\" -e 'display dialog \"peel quit unexpectedly while running this Quick Action.\" buttons {\"OK\"} default button 1 with title \"peel\" with icon stop'",
             "  exit 0",
             "fi",
             "exit $rc",
@@ -39,6 +39,12 @@ enum WorkflowGenerator {
     static func write(_ kind: QuickActionKind, peel: URL, into directory: URL,
                       testLog: URL? = nil, testChoice: String? = nil) throws -> URL {
         let bundle = directory.appendingPathComponent(kind.bundleName, isDirectory: true)
+        // A peel bundle whose name differs only in case ("Peel - Zip") is the same path on most Macs;
+        // remove it so the new name's casing is the one that sticks.
+        for old in installedBundles(in: directory) where old.lastPathComponent != kind.bundleName
+            && old.lastPathComponent.lowercased() == kind.bundleName.lowercased() {
+            try FileManager.default.removeItem(at: old)
+        }
         if FileManager.default.fileExists(atPath: bundle.path)
             && !installedBundles(in: directory).contains(where: { $0.lastPathComponent == bundle.lastPathComponent }) {
             throw PeelError.invalidArgument("a workflow named \(kind.bundleName) already exists and wasn't made by peel")

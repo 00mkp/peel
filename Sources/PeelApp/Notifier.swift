@@ -17,7 +17,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         center.delegate = self
         let send = {
             let content = UNMutableNotificationContent()
-            content.title = "Peel"
+            content.title = "peel"
             content.body = text
             center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { error in
                 if error != nil { DispatchQueue.main.async(execute: fallback) }

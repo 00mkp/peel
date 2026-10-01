@@ -46,7 +46,7 @@ public enum PeelSupport {
         directory(home: home).appendingPathComponent("install.conf")
     }
 
-    /// Written by Peel.app so the CLI can report it: version, Open at Login state.
+    /// Written by peel.app so the CLI can report it: version, Open at Login state.
     public static func appState(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> URL {
         directory(home: home).appendingPathComponent("app-state.conf")
     }

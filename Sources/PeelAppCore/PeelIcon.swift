@@ -1,6 +1,6 @@
 import AppKit
 
-/// Peel's menu-bar icon: a corkscrew twist of citrus peel, like a cocktail garnish.
+/// peel's menu-bar icon: a corkscrew twist of citrus peel, like a cocktail garnish.
 /// Drawn in code as a template image so it follows the menu bar's light/dark appearance.
 public enum PeelIcon {
     public static func menuBarImage() -> NSImage {
@@ -14,7 +14,7 @@ public enum PeelIcon {
 
     /// A ribbon spiralling down a slightly tilted axis; the back of each turn is thinner and
     /// fainter so the twist reads as three-dimensional.
-    static func drawTwist(in rect: NSRect) {
+    static func drawTwist(in rect: NSRect, color: NSColor = .black, weight: Double = 1) {
         let turns = 2.5
         let steps = 240
         let top = rect.maxY - rect.height * 0.10
@@ -32,8 +32,8 @@ public enum PeelIcon {
                 let (start, depth) = point(t0)
                 let (end, _) = point(Double(step + 1) / Double(steps))
                 guard (depth > 0) == frontPass else { continue }
-                let width = rect.width * (frontPass ? 0.06 + 0.035 * depth : 0.045) * taper(t0)
-                NSColor.black.withAlphaComponent(frontPass ? 1 : 0.55).setStroke()
+                let width = rect.width * (frontPass ? 0.06 + 0.035 * depth : 0.045) * taper(t0) * weight
+                color.withAlphaComponent(frontPass ? 1 : 0.55).setStroke()
                 let segment = NSBezierPath()
                 segment.move(to: start)
                 segment.line(to: end)
@@ -41,6 +41,47 @@ public enum PeelIcon {
                 segment.lineCapStyle = .round
                 segment.stroke()
             }
+        }
+    }
+
+    /// The app icon (Finder, System Settings, the About panel): the same twist in white on an orange
+    /// tile, on the macOS icon grid — an 824/1024 rounded square, centred, with room for its shadow.
+    public static func appIconPNG(pixels px: Int) -> Data {
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8,
+                                   samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                   colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        let s = CGFloat(px) / 1024
+        let tile = NSRect(x: 100 * s, y: 100 * s, width: 824 * s, height: 824 * s)
+        let shape = NSBezierPath(roundedRect: tile, xRadius: 185 * s, yRadius: 185 * s)
+
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.3)
+        shadow.shadowOffset = NSSize(width: 0, height: -10 * s)
+        shadow.shadowBlurRadius = 24 * s
+        shadow.set()
+        NSColor.black.setFill()
+        shape.fill()
+        NSGraphicsContext.restoreGraphicsState()
+
+        // Tangerine, lighter at the top.
+        NSGradient(starting: NSColor(srgbRed: 1.00, green: 0.66, blue: 0.22, alpha: 1),
+                   ending: NSColor(srgbRed: 0.96, green: 0.43, blue: 0.07, alpha: 1))!
+            .draw(in: shape, angle: -90)
+        drawTwist(in: tile.insetBy(dx: tile.width * 0.21, dy: tile.height * 0.15), color: .white, weight: 1.6)
+
+        NSGraphicsContext.restoreGraphicsState()
+        return rep.representation(using: .png, properties: [:])!
+    }
+
+    /// Writes the .iconset folder `iconutil -c icns` turns into the app's icon: each size at 1x and 2x.
+    public static func writeIconset(to directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for size in [16, 32, 128, 256, 512] {
+            try appIconPNG(pixels: size).write(to: directory.appendingPathComponent("icon_\(size)x\(size).png"))
+            try appIconPNG(pixels: size * 2).write(to: directory.appendingPathComponent("icon_\(size)x\(size)@2x.png"))
         }
     }
 

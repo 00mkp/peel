@@ -14,7 +14,7 @@ struct LifecycleEnvironment {
     var isAppRunning: () -> Bool
     var quitApp: () -> Void
     var launchApp: (URL) -> Void
-    /// Opens a `peel://` URL (LaunchServices starts Peel.app if needed). Returns false if that failed.
+    /// Opens a `peel://` URL (LaunchServices starts peel.app if needed). Returns false if that failed.
     var openURL: (URL) -> Bool
     var deletePreferences: () -> Void
     /// How long to wait for the app to confirm a change through its state file.
@@ -64,10 +64,10 @@ struct LifecycleEnvironment {
 
     var appURL: URL {
         let dir = record["app_dir"].map { URL(fileURLWithPath: $0, isDirectory: true) } ?? defaultAppDir
-        return dir.appendingPathComponent("Peel.app", isDirectory: true)
+        return dir.appendingPathComponent("peel.app", isDirectory: true)
     }
 
-    /// The installed Peel.app's version, or nil if there is no Peel.app (or the bundle isn't peel's).
+    /// The installed peel.app's version, or nil if there is no peel.app (or the bundle isn't peel's).
     var installedAppVersion: String? {
         let plist = appURL.appendingPathComponent("Contents/Info.plist")
         guard let data = try? Data(contentsOf: plist),

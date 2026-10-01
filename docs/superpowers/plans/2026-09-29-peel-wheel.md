@@ -15,7 +15,7 @@
 - No Dock icon ever (LSUIElement stays true; no `.regular` activation policy anywhere).
 - Wheel: ≤ 6 slots (Zip last) + centre More…; only available one-step actions.
 - All runs keep Stage 1–3 guarantees (never overwrite inputs, atomic outputs) — they go through `ActionRunner`.
-- Verification must never send keystrokes via System Events; capture only Peel's own windows by id.
+- Verification must never send keystrokes via System Events; capture only peel's own windows by id.
 
 ## Review Focus
 1. A drag of non-file content (text, images from a browser) or a plain click-drag must never show the wheel.
@@ -524,7 +524,7 @@ final class StatusController: NSObject {
             let host = NSHostingController(rootView: makeContent())
             host.sizingOptions = [.preferredContentSize]
             let panel = NSPanel(contentViewController: host)
-            panel.title = "Peel"
+            panel.title = "peel"
             panel.styleMask = [.titled, .closable, .utilityWindow]
             panel.level = .floating
             panel.isReleasedWhenClosed = false
@@ -588,7 +588,7 @@ struct PanelView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(showingSettings ? "Settings" : "Peel").font(.headline)
+                Text(showingSettings ? "Settings" : "peel").font(.headline)
                 Spacer()
                 if showingSettings {
                     Button("Done") { showingSettings = false }
@@ -603,7 +603,7 @@ struct PanelView: View {
                     Menu {
                         Button("Settings…") { showingSettings = true }
                         Divider()
-                        Button("Quit Peel") { NSApp.terminate(nil) }
+                        Button("Quit peel") { NSApp.terminate(nil) }
                     } label: {
                         Image(systemName: "gearshape")
                     }
@@ -657,7 +657,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// "Open With" / files dropped on Peel in Finder: load them into the panel.
+    /// "Open With" / files dropped on peel in Finder: load them into the panel.
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
             guard let status = self.status else { self.pendingURLs += urls; return }
@@ -666,7 +666,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Opening Peel again (Finder, Spotlight) shows the panel.
+    /// Opening peel again (Finder, Spotlight) shows the panel.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         Task { @MainActor in self.status?.show() }
         return false
@@ -687,7 +687,7 @@ struct PeelApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        // Peel has no windows of its own; the status item, panel and wheel are AppKit-managed.
+        // peel has no windows of its own; the status item, panel and wheel are AppKit-managed.
         Settings { EmptyView() }
     }
 }
@@ -723,7 +723,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         center.delegate = self
         let send = {
             let content = UNMutableNotificationContent()
-            content.title = "Peel"
+            content.title = "peel"
             content.body = text
             center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
         }
@@ -896,7 +896,7 @@ final class WheelController {
         }
         Task { @MainActor in
             guard let rows = await model.runQuick(slot.kind, on: urls) else {
-                Notifier.shared.post("Peel is busy with another job — try again when it finishes.")
+                Notifier.shared.post("peel is busy with another job — try again when it finishes.")
                 return
             }
             Notifier.shared.post(QuickSummary.text(for: slot.kind, rows: rows))
@@ -912,6 +912,6 @@ final class WheelController {
 ---
 
 ### Task 6: Docs, review, merge, install
-- [ ] README "Peel.app" section rewritten for: menu-bar icon (click / drop onto it), pin, gear (Settings, Quit), Shift-drag wheel, notifications permission, pasteboard-privacy prompt note.
+- [ ] README "peel.app" section rewritten for: menu-bar icon (click / drop onto it), pin, gear (Settings, Quit), Shift-drag wheel, notifications permission, pasteboard-privacy prompt note.
 - [ ] Fresh reviewer (opus) on the branch with the Review Focus list; fix Critical/Important RED→GREEN where testable.
 - [ ] Merge to master, `./install.sh`, relaunch; owner tries the wheel by hand.

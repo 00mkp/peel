@@ -24,23 +24,23 @@ enum LifecycleActions {
         credits.addAttribute(.paragraphStyle, value: centered, range: NSRange(location: 0, length: credits.length))
         NSApp.activate(ignoringOtherApps: true)   // an accessory app's panel would open behind the front app
         NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "Peel", .applicationVersion: PeelVersion.current, .version: "", .credits: credits,
+            .applicationName: "peel", .applicationVersion: PeelVersion.current, .version: "", .credits: credits,
         ])
     }
 
     static func checkForUpdates() {
         guard !updating else {
-            alert("Peel is already updating", "It restarts by itself when the update is done.")
+            alert("peel is already updating", "It restarts by itself when the update is done.")
             return
         }
         guard let peel = requirePeel() else { return }
         run(peel, ["update", "--check"]) { code, out, err in
             switch UpdateCheck(exitCode: code, stdout: out, stderr: err) {
             case let .upToDate(version):
-                alert("Peel is up to date", "You have the latest version (\(version)).")
+                alert("peel is up to date", "You have the latest version (\(version)).")
             case let .available(summary):
                 let answer = alert("An update is available", "\(summary.replacingOccurrences(of: "->", with: "→"))\n\n"
-                                   + "Peel rebuilds from its source folder (this takes a few minutes) and restarts when it's done.",
+                                   + "peel rebuilds from its source folder (this takes a few minutes) and restarts when it's done.",
                                    buttons: ["Update", "Later"])
                 if answer == .alertFirstButtonReturn { update(peel) }
             case let .failed(message):
@@ -51,7 +51,7 @@ enum LifecycleActions {
 
     private static func update(_ peel: URL) {
         updating = true
-        Notifier.shared.post("Updating Peel — it restarts when the new version is ready.") {}
+        Notifier.shared.post("Updating peel — it restarts when the new version is ready.") {}
         // On success `peel update` quits this app and launches the new one, which says it was updated.
         run(peel, ["update"]) { code, out, err in
             updating = false
@@ -63,17 +63,17 @@ enum LifecycleActions {
 
     static func uninstall() {
         guard let peel = requirePeel() else { return }
-        var detail = "This removes Peel.app, the Finder Quick Actions, the peel command and Peel's settings, "
+        var detail = "This removes peel.app, the Finder Quick Actions, the peel command and peel's settings, "
             + "and turns off Open at Login."
         if let source = KeyValueFile.read(PeelSupport.installRecord())?["source"] {
             detail += "\n\nYour source folder (\(abbreviate(source))) is left in place."
         }
-        guard alert("Uninstall Peel?", detail, buttons: ["Uninstall", "Cancel"], destructive: true)
+        guard alert("Uninstall peel?", detail, buttons: ["Uninstall", "Cancel"], destructive: true)
                 == .alertFirstButtonReturn else { return }
         // On success `peel uninstall` quits this app; we only hear back if something went wrong.
         run(peel, ["uninstall"]) { code, _, err in
             guard code != 0 else { return }
-            alert("Peel couldn't remove everything", err.trimmingCharacters(in: .whitespacesAndNewlines))
+            alert("peel couldn't remove everything", err.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }
 
@@ -81,7 +81,7 @@ enum LifecycleActions {
 
     private static func requirePeel() -> URL? {
         if let peel = InstalledPeel.find() { return peel }
-        alert("The peel command isn't installed", "Reinstall Peel by running ./install.sh in its source folder.")
+        alert("The peel command isn't installed", "Reinstall peel by running ./install.sh in its source folder.")
         return nil
     }
 

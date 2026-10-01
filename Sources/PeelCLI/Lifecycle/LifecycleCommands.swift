@@ -19,7 +19,7 @@ struct Status: ParsableCommand {
         } else {
             Console.out("  app:            not installed")
         }
-        Console.out("  open at login:  \(env.appState?["login"] ?? "unknown (open Peel once)")")
+        Console.out("  open at login:  \(env.appState?["login"] ?? "unknown (open peel once)")")
         let locator = ToolLocator.standard
         let missing = Tool.allCases.filter { locator.find($0) == nil }.map(\.rawValue)
         Console.out("  tools:          " + (missing.isEmpty
@@ -185,7 +185,7 @@ struct Update: ParsableCommand {
         }
         Console.out("peel: updated \(before) -> \(after)")
         if let appVersion = env.installedAppVersion, appVersion != after {
-            Console.err("peel: warning: Peel.app reports \(appVersion), expected \(after)")
+            Console.err("peel: warning: peel.app reports \(appVersion), expected \(after)")
         }
         return 0
     }
@@ -230,12 +230,12 @@ struct Uninstall: ParsableCommand {
         if env.installedAppVersion != nil {
             // Turn the login item off first (confirmed by a fresh answer), so none is left dangling.
             if env.requestAppState(URL(string: "peel://login/off")!, until: { $0["login"] == "off" }) == nil {
-                failed.append("Open at Login: Peel didn't confirm it was turned off — check System Settings → General → Login Items")
+                failed.append("Open at Login: peel didn't confirm it was turned off — check System Settings → General → Login Items")
             }
         }
         if env.isAppRunning() {
             env.quitApp()
-            if env.isAppRunning() { failed.append("Peel.app is still running — quit it from the menu bar and rerun") }
+            if env.isAppRunning() { failed.append("peel.app is still running — quit it from the menu bar and rerun") }
         }
 
         let bundles = WorkflowGenerator.installedBundles(in: env.services)
@@ -280,7 +280,7 @@ struct Uninstall: ParsableCommand {
 struct AppCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "app",
-        abstract: "Start, stop or control the Peel menu-bar app.",
+        abstract: "Start, stop or control the peel menu-bar app.",
         subcommands: [Start.self, Stop.self, Panel.self, Login.self])
 }
 
@@ -290,11 +290,11 @@ extension AppCommand {
         func run() throws {
             let env = LifecycleEnvironment.current
             guard env.installedAppVersion != nil else {
-                Console.err("peel: Peel.app is not installed (expected \(env.appURL.path)) — run ./install.sh from the source")
+                Console.err("peel: peel.app is not installed (expected \(env.appURL.path)) — run ./install.sh from the source")
                 throw ExitCode(1)
             }
             env.launchApp(env.appURL)
-            Console.out("✓ Peel is running (look for the peel-twist icon in the menu bar)")
+            Console.out("✓ peel is running (look for the peel-twist icon in the menu bar)")
         }
     }
 
@@ -303,15 +303,15 @@ extension AppCommand {
         func run() throws {
             let env = LifecycleEnvironment.current
             guard env.isAppRunning() else {
-                Console.out("Peel isn't running")
+                Console.out("peel isn't running")
                 return
             }
             env.quitApp()
             guard !env.isAppRunning() else {
-                Console.err("peel: Peel didn't quit — quit it from its menu-bar icon")
+                Console.err("peel: peel didn't quit — quit it from its menu-bar icon")
                 throw ExitCode(1)
             }
-            Console.out("✓ Peel quit")
+            Console.out("✓ peel quit")
         }
     }
 
@@ -319,7 +319,7 @@ extension AppCommand {
         static let configuration = CommandConfiguration(abstract: "Open the menu-bar panel.")
         func run() throws {
             guard LifecycleEnvironment.current.openURL(URL(string: "peel://panel")!) else {
-                Console.err("peel: couldn't reach Peel.app — is it installed? (peel status)")
+                Console.err("peel: couldn't reach peel.app — is it installed? (peel status)")
                 throw ExitCode(1)
             }
         }
@@ -333,7 +333,7 @@ extension AppCommand {
         func run() throws {
             let env = LifecycleEnvironment.current
             guard env.installedAppVersion != nil else {
-                Console.err("peel: couldn't reach Peel.app — is it installed? (peel status)")
+                Console.err("peel: couldn't reach peel.app — is it installed? (peel status)")
                 throw ExitCode(1)
             }
             let state = env.requestAppState(URL(string: "peel://login/\(setting.rawValue)")!) {
@@ -343,9 +343,9 @@ extension AppCommand {
             case setting.rawValue?:
                 Console.out("✓ Open at Login is \(setting.rawValue)")
             case "needs-approval"?:
-                Console.out("Peel is waiting for approval — allow it in System Settings → General → Login Items")
+                Console.out("peel is waiting for approval — allow it in System Settings → General → Login Items")
             default:
-                Console.out("requested; open Peel's Settings to check it took effect")
+                Console.out("requested; open peel's Settings to check it took effect")
             }
         }
     }

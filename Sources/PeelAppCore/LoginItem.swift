@@ -1,7 +1,7 @@
 import Foundation
 import ServiceManagement
 
-/// Whether Peel opens at login.
+/// Whether peel opens at login.
 public protocol LoginItem: AnyObject {
     var isEnabled: Bool { get }
     /// Registered, but waiting for the person to allow it in System Settings → Login Items.

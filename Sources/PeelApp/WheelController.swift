@@ -97,7 +97,7 @@ final class WheelController {
         let showPanel: () -> Void = { [weak self] in self?.status.show() }
         guard let slot else {
             if model.isRunning {
-                Notifier.shared.post("Peel is busy with another job — try again when it finishes.", fallback: showPanel)
+                Notifier.shared.post("peel is busy with another job — try again when it finishes.", fallback: showPanel)
             } else {
                 model.clear()
                 model.add(urls)
@@ -107,7 +107,7 @@ final class WheelController {
         }
         Task { @MainActor in
             guard let rows = await model.runQuick(slot.kind, on: urls) else {
-                Notifier.shared.post("Peel is busy with another job — try again when it finishes.", fallback: showPanel)
+                Notifier.shared.post("peel is busy with another job — try again when it finishes.", fallback: showPanel)
                 return
             }
             // Without notification permission, the panel (which lists the results) is the feedback.

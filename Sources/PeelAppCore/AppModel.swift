@@ -74,7 +74,7 @@ public final class AppModel: ObservableObject {
     private let makeLocator: () -> ToolLocator
     private let loginItem: LoginItem
     private let stateFile: URL?
-    /// The version that ran before this launch, when it differs (i.e. Peel was just updated).
+    /// The version that ran before this launch, when it differs (i.e. peel was just updated).
     public let updatedFrom: String?
     private var token: CancelToken?
 
@@ -113,11 +113,11 @@ public final class AppModel: ObservableObject {
         }
         refreshLoginItem()
         if loginItemNeedsApproval {
-            loginItemError = "Allow Peel in System Settings → General → Login Items to finish turning this on."
+            loginItemError = "Allow peel in System Settings → General → Login Items to finish turning this on."
         }
     }
 
-    /// Re-reads Open at Login (it can be changed in System Settings while Peel runs).
+    /// Re-reads Open at Login (it can be changed in System Settings while peel runs).
     public func refreshLoginItem() {
         launchAtLogin = loginItem.isEnabled
         loginItemNeedsApproval = loginItem.needsApproval

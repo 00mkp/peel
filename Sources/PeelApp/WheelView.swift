@@ -34,7 +34,7 @@ struct WheelView: View {
             }
             ChipView(title: "More", systemImage: "ellipsis", size: 58, lit: lit == -1,
                      onTargeted: { setHovered(-1, $0) }) { urls in onDrop(nil, urls) }
-                .help("More… — open these files in the Peel panel")
+                .help("More… — open these files in the peel panel")
         }
         .frame(width: Self.size, height: Self.size)
         .animation(.easeOut(duration: 0.12), value: lit)

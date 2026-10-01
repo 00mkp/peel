@@ -2,7 +2,7 @@ import ArgumentParser
 import ConvertKit
 import Foundation
 
-public struct Peel: ParsableCommand {
+public struct PeelRoot: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "peel",
         abstract: "Convert and edit images, PDFs, audio/video, subtitles and archives — all locally.",

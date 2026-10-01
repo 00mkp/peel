@@ -21,7 +21,7 @@ enum QuickActionPaths {
 struct InstallQuickActions: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "install-quick-actions",
-        abstract: "Add Peel actions to Finder's right-click menu (Quick Actions).")
+        abstract: "Add peel actions to Finder's right-click menu (Quick Actions).")
 
     @Option(help: .hidden) var dir: String?
     @Option(help: .hidden) var peelPath: String?
@@ -46,7 +46,7 @@ struct InstallQuickActions: ParsableCommand {
             }
         }
         if dir == nil { QuickActionPaths.refreshServicesMenu() }
-        if installed > 0 { Console.out("Right-click files in Finder → Quick Actions → Peel - …") }
+        if installed > 0 { Console.out("Right-click files in Finder → Quick Actions → peel - …") }
         if failed > 0 { throw ExitCode(1) }
     }
 }
@@ -54,7 +54,7 @@ struct InstallQuickActions: ParsableCommand {
 struct UninstallQuickActions: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "uninstall-quick-actions",
-        abstract: "Remove Peel's Finder Quick Actions.")
+        abstract: "Remove peel's Finder Quick Actions.")
 
     @Option(help: .hidden) var dir: String?
 
@@ -65,7 +65,7 @@ struct UninstallQuickActions: ParsableCommand {
             try FileManager.default.removeItem(at: bundle)
             Console.out("✓ removed \(bundle.deletingPathExtension().lastPathComponent)")
         }
-        if bundles.isEmpty { Console.out("no Peel Quick Actions installed") }
+        if bundles.isEmpty { Console.out("no peel Quick Actions installed") }
         if dir == nil { QuickActionPaths.refreshServicesMenu() }
     }
 }

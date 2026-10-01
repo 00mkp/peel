@@ -9,9 +9,9 @@
 Give peel the drag-and-drop / right-click convenience of the paid app it replaces, on top of the
 Stage 1 engine:
 
-- **Stage 2 — Finder Quick Actions:** right-click files in Finder → *Peel: Convert To…*,
-  *Peel: Merge PDFs*, *Peel: Split PDF*, *Peel: Extract Here*, *Peel: Zip*.
-- **Stage 3 — Peel.app:** a small native window + menu-bar popover. Drop files, pick an action,
+- **Stage 2 — Finder Quick Actions:** right-click files in Finder → *peel: Convert To…*,
+  *peel: Merge PDFs*, *peel: Split PDF*, *peel: Extract Here*, *peel: Zip*.
+- **Stage 3 — peel.app:** a small native window + menu-bar popover. Drop files, pick an action,
   set options, see results.
 - **Missing optional tools handled everywhere:** when ffmpeg / cwebp / avifenc / unar /
   rsvg-convert (or Homebrew itself) is missing, every surface says what's missing and how to
@@ -29,10 +29,10 @@ Stage 1 engine:
 - Personal-use polish level: a default app icon is fine; no signing beyond ad-hoc; no sandbox.
 
 ### Success criteria
-1. `./install.sh` installs the CLI, the Quick Actions and `~/Applications/Peel.app`.
+1. `./install.sh` installs the CLI, the Quick Actions and `~/Applications/peel.app`.
 2. Each Quick Action works from Finder on files with spaces/accents, and reports results with a
    notification and failures with a dialog.
-3. Peel.app: drop files (window, menu-bar popover, or Dock icon) → valid actions for that
+3. peel.app: drop files (window, menu-bar popover, or Dock icon) → valid actions for that
    selection are offered → running one produces the same outputs, naming and safety guarantees
    as the CLI (never overwrite inputs, numbered collisions, atomic writes).
 4. With a tool missing, the CLI, Quick Actions and app each show the specific tool, what it
@@ -62,7 +62,7 @@ PeelCLI (existing)
  └─ QuickActions/               NEW — workflow generator + UI glue (osascript)
 PeelAppCore                     NEW library — UI-free app model (ObservableObject), testable
 PeelApp                         NEW executable — SwiftUI views, window + MenuBarExtra
-scripts/build-app.sh            NEW — assembles Peel.app bundle, ad-hoc signs, installs
+scripts/build-app.sh            NEW — assembles peel.app bundle, ad-hoc signs, installs
 ```
 
 Principles carried over: engine/UI separation, one capability registry, safe outputs, local only.
@@ -131,8 +131,8 @@ available to users with unusual setups.
 - The script embeds the absolute path of the installed `peel` (resolved from the running
   executable) and is a one-liner:
   `P='/Users/…/peel'; [ -x "$P" ] || { osascript … "peel isn't installed at $P — re-run install.sh"; exit 1; }; "$P" quick-action <name> "$@"`
-- `peel uninstall-quick-actions` removes exactly the bundles it installed (names prefixed `Peel - `).
-- Re-installing replaces existing Peel workflows (these are peel's own files, not user data).
+- `peel uninstall-quick-actions` removes exactly the bundles it installed (names prefixed `peel - `).
+- Re-installing replaces existing peel workflows (these are peel's own files, not user data).
 
 ### 4.2 `peel quick-action <name> <files…>` (hidden)
 Runs in Swift via `ActionCatalog`/`ActionRunner`; talks to the user through a `QuickActionUI`
@@ -143,18 +143,18 @@ Tests inject a fake UI.
 
 | Quick Action | Behaviour |
 |---|---|
-| Peel - Convert To… | Picker of targets for the selection; available ones first, unavailable ones listed as `webp — needs cwebp` (choosing one shows the install dialog). |
-| Peel - Merge PDFs | Requires 2+ PDFs; output `<first>-merged.pdf` next to the first. |
-| Peel - Split PDF | One file per page, for each selected PDF. |
-| Peel - Extract Here | `peel x` semantics for each selected archive. |
-| Peel - Zip | Zips the selection to `<first>.zip`. |
+| peel - Convert To… | Picker of targets for the selection; available ones first, unavailable ones listed as `webp — needs cwebp` (choosing one shows the install dialog). |
+| peel - Merge PDFs | Requires 2+ PDFs; output `<first>-merged.pdf` next to the first. |
+| peel - Split PDF | One file per page, for each selected PDF. |
+| peel - Extract Here | `peel x` semantics for each selected archive. |
+| peel - Zip | Zips the selection to `<first>.zip`. |
 
 Result: one notification ("Converted 3 files", "Merged into report-merged.pdf"); any failure →
 one dialog listing each failed file and message; a missing tool → dialog with the install command
 and Copy button (plus the brew.sh hint if Homebrew is absent). Wrong selection (e.g. Merge on a
 .png) → dialog explaining what the action needs.
 
-## 5. Stage 3 — Peel.app
+## 5. Stage 3 — peel.app
 
 ### 5.1 Surfaces
 - **Main window:** drop zone → file list (name, detected type, remove button) → action picker →
@@ -186,8 +186,8 @@ validated in the model and shown inline; Run is disabled until valid.
 
 ### 5.5 Build & install
 `scripts/build-app.sh`: `swift build -c release --product PeelApp`, assemble
-`Peel.app/Contents/{MacOS/Peel, Info.plist}` (bundle id `dev.peel.app`, `LSMinimumSystemVersion`
-13.0, document types), `codesign --force -s -` (ad-hoc), install to `~/Applications/Peel.app`
+`peel.app/Contents/{MacOS/peel, Info.plist}` (bundle id `dev.peel.app`, `LSMinimumSystemVersion`
+13.0, document types), `codesign --force -s -` (ad-hoc), install to `~/Applications/peel.app`
 (override with `APP_DIR`). `install.sh` runs it, then `peel install-quick-actions`.
 
 ## 6. Error handling
