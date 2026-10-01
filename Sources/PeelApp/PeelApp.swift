@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
             self.status = StatusController(model: self.model) { [unowned self] in
-                AnyView(PanelView().environmentObject(self.model))
+                AnyView(PanelView(showGearMenu: { [unowned self] in self.status.showGearMenu() }).environmentObject(self.model))
             }
             self.wheel = WheelController(model: self.model, status: self.status)
             self.wheel.start()

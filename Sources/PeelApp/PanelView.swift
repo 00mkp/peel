@@ -5,6 +5,8 @@ import SwiftUI
 /// Everything in the menu-bar panel: header, then either the main flow or Settings.
 struct PanelView: View {
     @EnvironmentObject private var model: AppModel
+    /// Opens the gear menu (owned by StatusController).
+    var showGearMenu: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -22,7 +24,7 @@ struct PanelView: View {
                     .buttonStyle(.borderless)
                     .help(model.panelPinned ? "Unpin: close when clicking elsewhere" : "Pin: keep open while you drag files in")
                     Button {
-                        (NSApp.delegate as? AppDelegate)?.status.showGearMenu()
+                        showGearMenu()
                     } label: {
                         Image(systemName: "gearshape")
                     }
