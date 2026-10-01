@@ -2,7 +2,7 @@ import Foundation
 
 /// peel's version. Must match the repo's VERSION file (a test checks), which build scripts read.
 public enum PeelVersion {
-    public static let current = "0.3.1"
+    public static let current = "0.3.2"
 }
 
 /// A tiny `key=value` per line file (install record, app state). Values may contain "=".
