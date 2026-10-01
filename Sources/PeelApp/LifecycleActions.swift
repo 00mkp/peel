@@ -13,10 +13,16 @@ enum LifecycleActions {
             string: "Converts images, PDFs, audio, video and archives from the menu bar, Finder or the command line.",
             attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                          .foregroundColor: NSColor.secondaryLabelColor])
-        NSApp.activate(ignoringOtherApps: true)   // an accessory app's panel would open behind the front app
-        NSApp.orderFrontStandardAboutPanel(options: [
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [
             .applicationName: "peel", .applicationVersion: PeelVersion.current, .version: "", .credits: credits,
-        ])
+        ]
+        // The bundle's own icon file: left to itself, the panel gets the system's dark-mode rendering
+        // (a black tile) instead of the tangerine one Finder and mutewake's About panel show.
+        if let url = Bundle.main.url(forResource: "peel", withExtension: "icns"), let icon = NSImage(contentsOf: url) {
+            options[.applicationIcon] = icon
+        }
+        NSApp.activate(ignoringOtherApps: true)   // an accessory app's panel would open behind the front app
+        NSApp.orderFrontStandardAboutPanel(options: options)
     }
 
     static func checkForUpdates() {
