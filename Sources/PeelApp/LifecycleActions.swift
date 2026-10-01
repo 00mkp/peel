@@ -6,22 +6,13 @@ import PeelAppCore
 /// `peel` command, so they behave exactly like `peel update` / `peel uninstall` in a terminal.
 @MainActor
 enum LifecycleActions {
-    private static let repo = URL(string: "https://github.com/00mkp/peel")!
     private static var updating = false
 
     static func about() {
-        let small = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-        let credits = NSMutableAttributedString(
-            string: "Free, open-source file converter for macOS.\n",
-            attributes: [.font: small, .foregroundColor: NSColor.secondaryLabelColor])
-        credits.append(NSAttributedString(string: "github.com/00mkp/peel", attributes: [.font: small, .link: repo]))
-        if let source = KeyValueFile.read(PeelSupport.installRecord())?["source"] {
-            credits.append(NSAttributedString(string: "\nInstalled from \(abbreviate(source))",
-                                              attributes: [.font: small, .foregroundColor: NSColor.tertiaryLabelColor]))
-        }
-        let centered = NSMutableParagraphStyle()
-        centered.alignment = .center
-        credits.addAttribute(.paragraphStyle, value: centered, range: NSRange(location: 0, length: credits.length))
+        let credits = NSAttributedString(
+            string: "Converts images, PDFs, audio, video and archives from the menu bar, Finder or the command line.",
+            attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                         .foregroundColor: NSColor.secondaryLabelColor])
         NSApp.activate(ignoringOtherApps: true)   // an accessory app's panel would open behind the front app
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "peel", .applicationVersion: PeelVersion.current, .version: "", .credits: credits,
